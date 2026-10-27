@@ -6,7 +6,7 @@ comment) and bumped by Dependabot after a 7-day cooldown.
 
 | Workflow | When | What |
 |---|---|---|
-| **CI** (`ci.yml`) | push to `main`, every PR, by hand | Detects the stacks, then runs the jobs below; **`CI result`** sums them up. |
+| **CI** (`ci.yml`) | push to `main`, every PR, by hand | Finds the Terraform root modules, then runs the jobs below; **`CI result`** sums them up. |
 | **PR rules** (`pr-rules.yml`) | PR opened, edited, updated | Branch name, base branch, linked issue, no AI attribution, commit style (warnings). |
 | **Terraform deploy** (`terraform-deploy.yml`) | PR changing `src/landing-zone/`, by hand from `main` | Plans each environment on a PR; plans or applies one environment by hand. Off until `TF_DEPLOY_ENABLED` is `true`. See [Deploys](#deploys). |
 | **CodeQL** (default setup, no file) | push to `main`, every PR, weekly | Code scanning of the languages GitHub detects; results in **Security → Code scanning**. |
@@ -15,12 +15,9 @@ comment) and bumped by Dependabot after a 7-day cooldown.
 
 | Job | Runs when | Steps |
 |---|---|---|
-| Detect stacks | always | Terraform when a `*.tf` is tracked: each folder with one, outside `modules/` and `tests/` folders, is a root module. .NET when a `*.slnx`/`*.sln`/`*.csproj` is tracked; Python when `requirements-dev.lock` or `requirements.lock` is. |
+| Detect stacks | always | Terraform when a `*.tf` is tracked: each folder with one, outside `modules/` and `tests/` folders, is a root module. |
 | Workflow lint | always | actionlint (checksum-verified download) with shellcheck on every `run:` script. |
 | Terraform checks | Terraform | Terraform `TERRAFORM_VERSION` (workflow `env`), `terraform fmt -check -recursive` once, then in each root module `terraform init -backend=false -lockfile=readonly`, `terraform validate` and `terraform test` (no test files = warning). Every root module reports in the job summary, even after another failed. No Azure sign-in: tests use mocked providers. |
-| Package age gate | .NET or Python | `scripts/check_package_age.py`: every locked version at least 7 days old (see [supply-chain.md](supply-chain.md)). |
-| .NET build and test | .NET | Kept from the template, skipped here (no .NET project): restore in locked mode, `dotnet format --verify-no-changes`, Release build, tests. It needs the template's .NET SDK and package files back first. |
-| Python lint and test | Python | Kept from the template, skipped here (no Python lock file): `pip install --require-hashes`, ruff, pytest. It needs the template's Python version and lock files back first. |
 | **CI result** | always | Fails when any job failed or was cancelled; skipped jobs are fine. The check the ruleset requires. |
 
 PR runs cancel the previous run of the same PR; runs on `main` are never cancelled.
@@ -51,7 +48,6 @@ ruleset doesn't change.
 
 | Variable | Default | Used by |
 |---|---|---|
-| `DOTNET_SOLUTION` | shallowest `*.slnx` / `*.sln` / `*.csproj` | CI |
 | `TF_DEPLOY_ENABLED` | not `true`: off | Terraform deploy: on/off switch |
 | `AZURE_CLIENT_ID` | none | Terraform deploy: client ID of the pipeline identity (`github_deployer` output of `src/state-backend`) |
 | `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | none | Terraform deploy: where it signs in and deploys |
@@ -59,7 +55,7 @@ ruleset doesn't change.
 | `PROJECT_USER_PRINCIPALS_<ENV>` | `{}` | Terraform deploy: `project_user_principals` of that environment, as JSON (Entra object IDs stay out of the repository) |
 | `APP_SETTINGS_WRITERS_<ENV>` | `{}` | Terraform deploy: `app_settings_writer_principals` of that environment, as JSON: the people who also run Terraform from a workstation |
 
-Set one with `gh variable set DOTNET_SOLUTION --body src/App.slnx --repo <owner>/<repo>`.
+Set one with `gh variable set <NAME> --body <value> --repo <owner>/<repo>`.
 
 ## Deploys
 
