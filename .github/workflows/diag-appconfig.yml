@@ -18,8 +18,8 @@ jobs:
           az login --service-principal -u "$CLIENT_ID" --tenant "$TENANT_ID" --federated-token "$tok" --allow-no-subscriptions -o none
           echo "signed in"
           az appconfig kv list --endpoint https://appcs-alz-dev-l9pk.azconfig.io --auth-mode login --label dev --query "[].key" -o tsv || true
-          az account get-access-token --resource https://azconfig.io --query "expiresOn" -o tsv || true
           at=$(az account get-access-token --resource https://azconfig.io --query accessToken -o tsv)
-          echo "$at" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | jq '{aud, oid, appid, idtyp, xms_mirid}' || true
-          curl -sS -o /dev/null -w "direct GET kv: %{http_code}
-" -H "Authorization: Bearer $at" "https://appcs-alz-dev-l9pk.azconfig.io/kv?label=dev&api-version=2023-10-01"
+          echo "$at" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | jq '{aud, oid, appid, idtyp}' || true
+          code=$(curl -sS -o body.txt -w "%{http_code}" -H "Authorization: Bearer $at" "https://appcs-alz-dev-l9pk.azconfig.io/kv?label=dev&api-version=2023-10-01")
+          echo "direct GET kv: $code"
+          head -c 400 body.txt
