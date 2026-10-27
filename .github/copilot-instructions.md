@@ -204,9 +204,14 @@ has the design, the phases and the decisions still open.
 - **Own root module** on the AVM pattern module `Azure/avm-ptn-aiml-ai-foundry/azurerm`
   (0.12.0) with `create_private_endpoints = false`: the upstream Terraform landing zone module
   only builds network-isolated deployments.
-- **The switch:** `deploy_agent_service_dependencies` (bool, default `true`) deploys or skips
-  the Foundry Agent Service's own Cosmos DB, AI Search and Storage (*standard* versus *basic*
-  agent setup). `terraform test` covers both ways.
+- **Three groups of resources,** one file each in `src/landing-zone/`, all in one resource
+  group and one state per environment: **Foundry essentials** (`main.foundry.tf`, always on),
+  the **Agent Service dependencies** (`main.agent-service.tf`, `deploy_agent_service_dependencies`:
+  the Agent Service's own Cosmos DB, AI Search and Storage, *standard* versus *basic* agent
+  setup), and the **workload** (`main.workload.tf`, `deploy_workload`: App Configuration,
+  Container Registry, Container Apps, identity, Key Vault, the applications' AI Search and
+  Storage). Groups 2 and 3 depend on group 1 only. `terraform test` covers each switch both ways.
+  When a resource moves between groups or changes address, add a `moved` block.
 - **Code in `src/`:** `src/state-backend/` (one-time remote state bootstrap) and
   `src/landing-zone/` (the root module, with `tests/` and `environments/`). Terraform rules are
   in `.github/instructions/terraform.instructions.md`.

@@ -7,13 +7,15 @@ uses the Foundry AVM pattern module `Azure/avm-ptn-aiml-ai-foundry/azurerm` 0.12
 
 ## What it deploys
 
-| Area | File | Resources |
-|---|---|---|
-| Core | `main.core.tf` | Resource group; Log Analytics (key auth off); workspace-based Application Insights (key auth off); Key Vault (RBAC authorization, purge protection, 90-day soft delete, diagnostics to Log Analytics). |
-| Foundry | `main.foundry.tf` | Foundry (AI Services) account with key auth off and public endpoint on; one project; the model deployments; diagnostics to Log Analytics; Foundry User for `project_user_principals`. |
-| Application platform | `main.app-platform.tf` | Behind `deploy_application_platform`: App Configuration (key auth off) holding the landing zone's endpoints and names, labeled with the environment; Container Registry (no admin user, no anonymous pull); Container Apps environment (logs to Log Analytics through a diagnostic setting); the applications' user-assigned identity, with App Configuration Data Reader, AcrPull and Foundry User. |
-| Application data | `main.app-data.tf` | Behind `deploy_application_data`: the applications' own AI Search and Storage (key auth off), with Search Index Data Contributor and Storage Blob Data Contributor for the applications' identity. |
-| Agent Service | `main.agent-service.tf` | Behind `deploy_agent_service_dependencies`: Cosmos DB (serverless by default), AI Search and Storage, all with key auth off and public endpoints; the project's connections to them, the account and project capability hosts, and the RBAC the Agent Service needs. The Foundry module creates Cosmos DB and Storage. AI Search is created next to it, so it can live in `search_location`, and the project connects to it as an existing resource. |
+The resources fall into three groups, one file each, all in one resource group and one
+Terraform state per environment (decision D8). Groups 2 and 3 build on group 1, not on each
+other: either can be on or off alone.
+
+| Group | File | Switch | Resources |
+|---|---|---|---|
+| 1. Foundry essentials | `main.foundry.tf` | none: always | Resource group; Log Analytics (key auth off); workspace-based Application Insights (key auth off); Foundry (AI Services) account with key auth off and public endpoint on; one project; the model deployments; diagnostics to Log Analytics; Foundry User for `project_user_principals`. |
+| 2. Agent Service dependencies | `main.agent-service.tf` | `deploy_agent_service_dependencies` | Cosmos DB (serverless by default), AI Search and Storage, all with key auth off and public endpoints; the project's connections to them, the account and project capability hosts, and the RBAC the Agent Service needs. The Foundry module creates Cosmos DB and Storage. AI Search is created next to it, so it can live in `search_location`, and the project connects to it as an existing resource. |
+| 3. Workload | `main.workload.tf` | `deploy_workload` | App Configuration (key auth off) holding the landing zone's endpoints and names, labeled with the environment; Container Registry (no admin user, no anonymous pull); Container Apps environment (logs to Log Analytics through a diagnostic setting); the applications' user-assigned identity, with App Configuration Data Reader, AcrPull and Foundry User; Key Vault for the applications' secrets (RBAC authorization, purge protection, 90-day soft delete, diagnostics to Log Analytics); the applications' own AI Search and Storage (key auth off), with Search Index Data Contributor and Storage Blob Data Contributor for the applications' identity. |
 
 Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`,
 `aif-alz-dev-ab12`, `kv-alz-dev-ab12`); the project is `proj-<prefix>-<environment>`.
@@ -36,9 +38,17 @@ Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`
 | `existing_agent_service_dependencies` | none | Resource IDs of an existing dedicated Cosmos DB, AI Search and Storage to connect instead of creating them. |
 | `agent_cosmos_db_serverless` | `true` | Serverless Cosmos DB; off: provisioned, with `agent_cosmos_db_total_throughput_limit` (-1 or at least 3000 RU/s). |
 | `agent_search_sku`, `agent_search_replica_count` | `basic`, 1 | AI Search for the Agent Service. |
-| `deploy_application_platform` | `true` | App Configuration, Container Registry, Container Apps environment, applications' identity (decision D2). |
-| `deploy_application_data` | `true` | The applications' AI Search and Storage (decision D2). |
-| `app_configuration_sku`, `container_registry_sku`, `app_search_sku` | `standard`, `Basic`, `basic` | SKUs of the application resources. |
+| `deploy_workload` | `true` | The workload group: App Configuration, Container Registry, Container Apps environment, applications' identity, Key Vault, the applications' AI Search and Storage (decision D2). |
+| `app_configuration_sku`, `container_registry_sku`, `app_search_sku` | `standard`, `Basic`, `basic` | SKUs of the workload resources. |
+
+`deploy_application_platform` and `deploy_application_data` are replaced by `deploy_workload`.
+A tfvars file that still sets either one fails the plan with a message saying so.
+
+**Existing environments:** the regrouping changes no resource. Key Vault and its diagnostic
+setting moved from the old core group into the workload, so `moved` blocks in
+`main.workload.tf` carry them to their new addresses: the first plan shows them as moved, not
+replaced. Turning `deploy_workload` off deletes Key Vault too; with purge protection, it stays
+soft-deleted for 90 days under its name.
 
 `terraform.tfvars.example` shows them all; copy it to `terraform.tfvars` (gitignored).
 
@@ -73,7 +83,7 @@ A call with an `api-key` header gets 401: key authentication is off.
 
 ## Settings in App Configuration
 
-With the platform on, Terraform writes these keys, labeled with the environment (`dev`),
+With the workload on, Terraform writes these keys, labeled with the environment (`dev`),
 through the data plane. Whoever runs Terraform needs App Configuration Data Owner, even for a
 plan: the pipeline identity gets it from `src/state-backend`, and people who run Terraform from
 a workstation are listed in `app_settings_writer_principals`.
@@ -86,7 +96,7 @@ a workstation are listed in `app_settings_writer_principals`.
 | `landingzone:agent_service:setup` | `standard` or `basic` |
 | `landingzone:key_vault:uri` | Key Vault URI |
 | `landingzone:app_insights:connection` | Application Insights connection string |
-| `landingzone:app_data:search_endpoint`, `landingzone:app_data:blob_endpoint` | Application data endpoints (data on) |
+| `landingzone:app_data:search_endpoint`, `landingzone:app_data:blob_endpoint` | The applications' AI Search and Blob endpoints |
 
 An application running as the applications' identity reads them with Entra ID, for example
 `az appconfig kv list --endpoint <endpoint> --auth-mode login --label dev` after
