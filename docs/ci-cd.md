@@ -18,7 +18,7 @@ comment) and bumped by Dependabot after a 7-day cooldown.
 | Detect stacks | always | Terraform when a `*.tf` is tracked: each folder with one, outside `modules/` and `tests/` folders, is a root module. .NET when a `*.slnx`/`*.sln`/`*.csproj` is tracked; Python when `requirements-dev.lock` or `requirements.lock` is. |
 | Workflow lint | always | actionlint (checksum-verified download) with shellcheck on every `run:` script. |
 | Terraform checks | Terraform | Terraform `TERRAFORM_VERSION` (workflow `env`), `terraform fmt -check -recursive` once, then in each root module `terraform init -backend=false -lockfile=readonly`, `terraform validate` and `terraform test` (no test files = warning). Every root module reports in the job summary, even after another failed. No Azure sign-in: tests use mocked providers. |
-| Package age gate | .NET or Python | `scripts/check_package_age.py`: every locked version at least 7 days old (see [supply-chain.md](supply-chain.md)). |
+| Package age gate | .NET or Python | Kept from the template, skipped here (no NuGet or Python lock file): `scripts/check_package_age.py` checks every locked version is at least 7 days old. |
 | .NET build and test | .NET | Kept from the template, skipped here (no .NET project): restore in locked mode, `dotnet format --verify-no-changes`, Release build, tests. It needs the template's .NET SDK and package files back first. |
 | Python lint and test | Python | Kept from the template, skipped here (no Python lock file): `pip install --require-hashes`, ruff, pytest. It needs the template's Python version and lock files back first. |
 | **CI result** | always | Fails when any job failed or was cancelled; skipped jobs are fine. The check the ruleset requires. |

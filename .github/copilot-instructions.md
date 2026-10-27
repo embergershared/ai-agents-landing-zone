@@ -153,7 +153,7 @@ All work goes through it: features, fixes, optimizations, docs, refactors, and c
 
 Every change to a database's schema or stored data shape (table, column, index, constraint,
 key, or a data migration) gets a migration path, a backup before it runs, and a way back.
-`docs/database.md` has the procedure and `scripts/db/` the scripts.
+This repository has no database: the rule applies to any database a later change adds.
 - **Scripted, never by hand:** through the project's own mechanism (EF Core migrations, Alembic,
   a versioned SQL script). Never alter a database by hand.
 - **Backup first** of any database holding real data (local dev data included), named with a
