@@ -23,6 +23,8 @@ locals {
   deployer_role_ids = {
     contributor = "b24988ac-6180-42a0-ab88-20f7382dd24c"
     rbac_admin  = "f58310d9-a9f6-439a-9e8d-f62e7b41a168"
+    # Data plane of the environment's App Configuration (the landing zone's settings).
+    app_configuration_data_owner = "5ae67dd6-50cb-40e7-96ff-dc2bfa4b606b"
   }
 }
 
@@ -63,6 +65,17 @@ resource "azurerm_role_assignment" "deployer_rbac_admin" {
   principal_type     = "ServicePrincipal"
   condition          = local.deployer_rbac_condition
   condition_version  = "2.0"
+}
+
+# The landing zone's plans read App Configuration settings through the data plane: the identity
+# needs the role before its first plan, so it can't come from the landing zone itself.
+resource "azurerm_role_assignment" "deployer_app_settings" {
+  for_each = local.deployer ? var.github_deployer.environments : {}
+
+  scope              = each.value
+  role_definition_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.deployer_role_ids.app_configuration_data_owner}"
+  principal_id       = azurerm_user_assigned_identity.deployer[0].principal_id
+  principal_type     = "ServicePrincipal"
 }
 
 resource "azurerm_role_assignment" "deployer_state" {
