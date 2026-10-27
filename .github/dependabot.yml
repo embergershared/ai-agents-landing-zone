@@ -22,6 +22,11 @@ updates:
       day: monday
     cooldown:
       default-days: 7
+    # azurerm stays on 4.x in every root module: the Foundry module (Azure/avm-ptn-aiml-ai-foundry)
+    # needs ~> 4.38. Moving to 5.x is done by hand, through its own issue (docs/supply-chain.md).
+    ignore:
+      - dependency-name: hashicorp/azurerm
+        update-types: [version-update:semver-major]
     groups:
       terraform-minor-and-patch:
         update-types: [minor, patch]
