@@ -2,4 +2,4 @@ blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
     url: https://github.com/embergershared/ai-agents-landing-zone/security/advisories/new
-    about: Report it privately, never in a public issue (see SECURITY.md).
+    about: Report it privately, never in a public issue (see docs/SECURITY.md).
