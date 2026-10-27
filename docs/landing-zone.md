@@ -20,14 +20,47 @@ other: either can be on or off alone.
 Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`,
 `aif-alz-dev-ab12`, `kv-alz-dev-ab12`); the project is `proj-<prefix>-<environment>`.
 
+### Compliant names from any prefix and environment
+
+`locals.tf` builds every name so it meets its type's Azure rules, whatever `name_prefix` and
+`environment` hold (issue #50):
+
+1. **Characters:** letters and digits are kept in lowercase; any other run of characters
+   (space, underscore, period, hyphens) becomes one hyphen, and none is left at either end.
+   Storage accounts and Container Registry drop the hyphens.
+2. **Length:** when a name would pass its type's maximum, the prefix part is shortened first
+   (down to 3 characters), then the environment part. The abbreviation, the `-app`/`agent`
+   parts and the random suffix stay.
+3. **Unchanged when it fits:** short plain values, such as `alz` and `dev`, give the same names
+   as before; `terraform test` checks every name for `alz`/`dev`.
+
+| Name | Maximum | Example for `swec-s3-ailz-agent-svc` / `fullrun` |
+|---|---|---|
+| Resource group | 90 | `rg-swec-s3-ailz-agent-svc-fullrun-ab12` |
+| Key Vault | 24 | `kv-swec-s3-fullrun-ab12` |
+| Storage accounts | 24, no hyphens | `stswecs3fullrunagentab12`, `stswecs3aifullrunappab12` |
+| Cosmos DB | 44 | `cosmos-swec-s3-ailz-agent-svc-fullrun-ab12` |
+| App Configuration | 50 | `appcs-swec-s3-ailz-agent-svc-fullrun-ab12` |
+| Container Registry | 50, no hyphens | `crswecs3ailzagentsvcfullrunab12` |
+| AI Search | 60 | `srch-swec-s3-ailz-agent-svc-fullrun-app-ab12` |
+| Container Apps environment | 60 | `cae-swec-s3-ailz-agent-svc-fullrun-ab12` |
+| Log Analytics | 63 | `log-swec-s3-ailz-agent-svc-fullrun-ab12` |
+| Foundry account, project | 64 | `aif-swec-s3-ailz-agent-svc-fullrun-ab12`, `proj-swec-s3-ailz-agent-svc-fullrun` |
+
+The Foundry module's own `base_name` (used for its capability host names) is the prefix cut
+to 9 characters. Tags and the App Configuration label keep `environment` as written. The
+state container stays `tfstate-<env>` with a strict environment name (2 to 20 lowercase
+letters, digits or hyphens), because the deploy workflow builds it from the GitHub
+environment's name.
+
 ## Inputs
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `location` | `swedencentral` | Region; it must offer the models with quota. |
 | `search_location` | `location` | Region of the two AI Search services, for a region without AI Search capacity. Dev uses `norwayeast`. |
-| `name_prefix` | `alz` | 3 to 7 lowercase letters or digits. |
-| `environment` | `dev` | Part of every name. |
+| `name_prefix` | `alz` | At least 3 letters or digits; made compliant and shortened per name (see above). |
+| `environment` | `dev` | At least 2 letters or digits; part of every name, made compliant like the prefix. |
 | `model_deployments` | `gpt-5.4-mini` 2026-03-17, GlobalStandard, 10K TPM | Deployments by name. |
 | `project_user_principals` | none | Entra groups that use the project: Foundry User on the account, Log Analytics Reader on Application Insights. |
 | `allowed_ip_ranges` | none | Empty means all networks; Entra ID is always required. |

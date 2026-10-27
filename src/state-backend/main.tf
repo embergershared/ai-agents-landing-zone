@@ -3,7 +3,7 @@ data "azurerm_client_config" "current" {}
 # Storage account names are global: a short random suffix keeps them unique, and lets a
 # soft-deleted or retired account's name stay unused.
 resource "random_string" "suffix" {
-  length  = 4
+  length  = local.suffix_length
   special = false
   upper   = false
 }
@@ -11,8 +11,18 @@ resource "random_string" "suffix" {
 locals {
   tags = merge({ workload = "agent-landing-zone", component = "state-backend" }, var.tags)
 
-  resource_group_name  = "rg-${var.name_prefix}-tfstate-${random_string.suffix.result}"
-  storage_account_name = "st${var.name_prefix}tfstate${random_string.suffix.result}"
+  suffix_length = 4
+
+  # The prefix made compliant (as in the landing zone): lowercase letters and digits, any other run
+  # of characters becomes one hyphen, none at either end; the storage account drops the hyphens.
+  # Each name shortens it to fit the type's maximum length (resource group 90, storage account 24,
+  # managed identity 128). Short plain values pass unchanged.
+  name_prefix         = trim(replace(lower(var.name_prefix), "/[^a-z0-9]+/", "-"), "-")
+  name_prefix_compact = replace(local.name_prefix, "-", "")
+
+  resource_group_name  = "rg-${trim(substr(local.name_prefix, 0, 90 - length("rg--tfstate-") - local.suffix_length), "-")}-tfstate-${random_string.suffix.result}"
+  storage_account_name = "st${substr(local.name_prefix_compact, 0, 24 - length("sttfstate") - local.suffix_length)}tfstate${random_string.suffix.result}"
+  deployer_name        = "id-${trim(substr(local.name_prefix, 0, 128 - length("id--github-deployer")), "-")}-github-deployer"
 
   state_contributors = setunion(
     var.state_contributor_principal_ids,

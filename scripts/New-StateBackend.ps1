@@ -97,6 +97,11 @@ if ($fileEnvironment -ne $Environment) {
     throw "$tfvarsPath sets environment = `"$fileEnvironment`", not `"$Environment`". The file name and the value must match."
 }
 $namePrefix = Get-TfvarsString -Path $tfvarsPath -Name 'name_prefix'
+# Folder name for the bootstrap state, made compliant as the bootstrap makes its names.
+$namePrefixFolder = ($namePrefix.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
+if (-not $namePrefixFolder) {
+    throw "$tfvarsPath sets name_prefix = `"$namePrefix`", which has no letters or digits."
+}
 
 # ---- Azure context ----
 $account = az account show --query '{id:id, name:name, tenantId:tenantId, user:user.name}' -o json | ConvertFrom-Json
@@ -108,7 +113,7 @@ Write-BackendLog INFO "Subscription: $($account.name) ($($account.id)), tenant $
 Write-BackendLog INFO "Environment: $Environment, name_prefix: $namePrefix, values from $tfvarsPath"
 
 # ---- Init on this subscription and prefix's bootstrap state ----
-$statePath = Join-Path $StateRoot "$($account.id)/$namePrefix/terraform.tfstate"
+$statePath = Join-Path $StateRoot "$($account.id)/$namePrefixFolder/terraform.tfstate"
 Write-BackendLog INFO "Bootstrap state: $statePath"
 
 # Before this script, the bootstrap state was one file at the root of StateRoot. A backend recorded

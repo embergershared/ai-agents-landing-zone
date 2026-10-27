@@ -30,6 +30,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `scripts/New-StateBackend.ps1` deploys an environment's state backend from its `environments/<env>.tfvars`, adds its
   container, stops on any delete in the plan, and writes `<env>.backend.hcl`; the bootstrap state is now kept per
   subscription and name prefix (#49).
+- Compliant names: `name_prefix` and `environment` accept longer values and other characters; every resource name in
+  the landing zone and the state backend is made lowercase with single hyphens and shortened to its type's maximum
+  length, prefix first. Short plain values such as `alz`/`dev` keep the same names (#50).
 - Agent tracing: the Foundry project connects to Application Insights through its managed identity (Monitoring Metrics
   Publisher), and `project_user_principals` get Log Analytics Reader to see the traces. The standard setup also gives
   the project Storage Account Contributor on the Agent Service storage account. Decision 0001 records why there is no

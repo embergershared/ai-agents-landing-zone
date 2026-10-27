@@ -54,8 +54,12 @@ az account set --subscription <subscription-id>
 
 The resource group and storage account keep their random suffix (`rg-<prefix>-tfstate-<suffix>`,
 `st<prefix>tfstate<suffix>`): storage account names are global, and a new backend never reuses
-a retired one's name. With the 24-character limit on storage account
-names, `name_prefix` is at most 8 lowercase letters or digits here (7 in the landing zone).
+a retired one's name. The names are made compliant from `name_prefix` as in the landing zone
+([landing-zone.md](landing-zone.md#compliant-names-from-any-prefix-and-environment)): lowercase,
+other characters as single hyphens, and the prefix shortened to fit (resource group 90
+characters, storage account 24 without hyphens). `swec-s3-ailz-agent-svc` gives
+`rg-swec-s3-ailz-agent-svc-tfstate-<suffix>` and `stswecs3ailzatfstate<suffix>`. The bootstrap
+state's folder uses the same compliant prefix.
 
 ### By hand
 
