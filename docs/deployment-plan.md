@@ -2,7 +2,8 @@
 
 This plan covers deploying the Agent Landing Zone **infrastructure** with Terraform for a
 customer with three requirements. The background (what the landing zone is, the upstream
-implementations and their limits) is in the [README](../README.md).
+implementations and their limits) is in [AGENT-LANDING-ZONE.md](../AGENT-LANDING-ZONE.md) and
+[IMPLEMENTATIONS.md](../IMPLEMENTATIONS.md).
 
 | Requirement | What it means here |
 |---|---|
