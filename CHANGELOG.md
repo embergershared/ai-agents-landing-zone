@@ -23,6 +23,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   environment, the applications' managed identity, and their own AI Search and Storage, each behind a switch (#10).
 - Deployment pipeline: `environments/dev.tfvars`, a GitHub Actions workflow that plans each environment on PRs and
   plans or applies one by hand from `main`, signing in through OIDC with a pipeline identity from `src/state-backend` (#11).
+- Runbook: prerequisites, deploy, verify, change, retire (with the soft-delete purges), troubleshooting and a cost
+  estimate per environment, in `docs/runbook.md` (#12).
 
 ### Changed
 - The agent rules and `docs/` describe this Terraform repository and no longer refer to the removed .NET and Python
