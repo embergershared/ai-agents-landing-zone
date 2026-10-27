@@ -13,7 +13,7 @@ uses the Foundry AVM pattern module `Azure/avm-ptn-aiml-ai-foundry/azurerm` 0.12
 | Foundry | `main.foundry.tf` | Foundry (AI Services) account with key auth off and public endpoint on; one project; the model deployments; diagnostics to Log Analytics; Foundry User for `project_user_principals`. |
 | Application platform | `main.app-platform.tf` | Behind `deploy_application_platform`: App Configuration (key auth off) holding the landing zone's endpoints and names, labeled with the environment; Container Registry (no admin user, no anonymous pull); Container Apps environment (logs to Log Analytics through a diagnostic setting); the applications' user-assigned identity, with App Configuration Data Reader, AcrPull and Foundry User. |
 | Application data | `main.app-data.tf` | Behind `deploy_application_data`: the applications' own AI Search and Storage (key auth off), with Search Index Data Contributor and Storage Blob Data Contributor for the applications' identity. |
-| Agent Service | `main.agent-service.tf` | Behind `deploy_agent_service_dependencies`: Cosmos DB (serverless by default), AI Search and Storage, all with key auth off and public endpoints; the project's connections to them, the account and project capability hosts, and the RBAC the Agent Service needs. |
+| Agent Service | `main.agent-service.tf` | Behind `deploy_agent_service_dependencies`: Cosmos DB (serverless by default), AI Search and Storage, all with key auth off and public endpoints; the project's connections to them, the account and project capability hosts, and the RBAC the Agent Service needs. The Foundry module creates Cosmos DB and Storage. AI Search is created next to it, so it can live in `search_location`, and the project connects to it as an existing resource. |
 
 Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`,
 `aif-alz-dev-ab12`, `kv-alz-dev-ab12`); the project is `proj-<prefix>-<environment>`.
@@ -23,6 +23,7 @@ Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`
 | Variable | Default | Meaning |
 |---|---|---|
 | `location` | `swedencentral` | Region; it must offer the models with quota. |
+| `search_location` | `location` | Region of the two AI Search services, for a region without AI Search capacity. Dev uses `norwayeast`. |
 | `name_prefix` | `alz` | 3 to 7 lowercase letters or digits. |
 | `environment` | `dev` | Part of every name. |
 | `model_deployments` | `gpt-5.4-mini` 2026-03-17, GlobalStandard, 10K TPM | Deployments by name. |
