@@ -190,7 +190,28 @@ key, or a data migration) gets a migration path, a backup before it runs, and a 
 
 ## This project
 
-Repo wrapper to deploy Azure AI Agents Landing Zone
+Repo wrapper to deploy Azure AI Agents Landing Zone. The [README](../README.md) explains the
+landing zone and its upstream implementations; [docs/deployment-plan.md](../docs/deployment-plan.md)
+has the design, the phases and the decisions still open.
 
-<!-- Add what an agent can't learn quickly from the code: build and run commands, the
-     architecture in a few lines, domain terms, where logs go, and known gotchas. -->
+- **Infrastructure only,** with Terraform: the Agent Landing Zone's Azure resources, not the
+  agent applications that run on them.
+- **Public endpoints only:** no VNet, private endpoints, private DNS, firewall or jumpbox.
+  Access control replaces network control: Entra ID only (local and key auth off), least
+  privilege RBAC, optional IP allow lists, diagnostics to Log Analytics.
+- **No AI Gateway yet:** applications call the Foundry endpoint directly. Nothing may block
+  putting the AI Gateway Landing Zone in front later.
+- **Own root module** on the AVM pattern module `Azure/avm-ptn-aiml-ai-foundry/azurerm`
+  (0.12.0) with `create_private_endpoints = false`: the upstream Terraform landing zone module
+  only builds network-isolated deployments.
+- **The switch:** `deploy_agent_service_dependencies` (bool, default `true`) deploys or skips
+  the Foundry Agent Service's own Cosmos DB, AI Search and Storage (*standard* versus *basic*
+  agent setup). `terraform test` covers both ways.
+- **Code in `src/`:** `src/state-backend/` (one-time remote state bootstrap) and
+  `src/landing-zone/` (the root module, with `tests/` and `environments/`). Terraform rules are
+  in `.github/instructions/terraform.instructions.md`.
+- **Checks:** `terraform fmt -check -recursive`, then in each root module
+  `terraform init -backend=false`, `terraform validate` and `terraform test`. CI runs the same.
+  Nothing is applied to Azure without an explicit go-ahead; a `terraform plan` is fine.
+- **Repository:** private, on GitHub Free, so `main` has no ruleset: open every change as a PR
+  and merge it only when **CI result** and **PR rules** are green.
