@@ -7,7 +7,8 @@ Read on 2026-10-27.
 
 | Source | Version read |
 |---|---|
-| [AI Landing Zones documentation](https://azure.github.io/AI-Landing-Zones/) ([source](https://github.com/Azure/AI-Landing-Zones)) | `main` at `1222404` |
+| [Azure/AI-Landing-Zones](https://github.com/Azure/AI-Landing-Zones) (the AI Landing Zones repository) | `main` at `1222404` |
+| [AI Landing Zones documentation](https://azure.github.io/AI-Landing-Zones/), published from it | same |
 | [Agent Landing Zone: Terraform templates](https://azure.github.io/AI-Landing-Zones/agent-landing-zone/terraform/) | same |
 | [Terraform infrastructure reference](https://azure.github.io/AI-Landing-Zones/terraform/) | same |
 | [Agent Landing Zone deployment choices](https://azure.github.io/AI-Landing-Zones/agent-landing-zone/planning/), [network isolation](https://azure.github.io/AI-Landing-Zones/agent-landing-zone/network-isolation/), [deployment settings](https://azure.github.io/AI-Landing-Zones/agent-landing-zone/configuration/) | same |
