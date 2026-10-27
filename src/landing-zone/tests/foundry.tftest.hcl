@@ -1,3 +1,4 @@
+# Group 1, Foundry essentials, on its own: groups 2 and 3 are off unless a run says otherwise.
 # Offline: every provider is mocked, nothing is created in Azure. override_during = plan makes
 # the mocked values known at plan time, so the runs can stay plan-only.
 mock_provider "azurerm" {
@@ -20,12 +21,6 @@ mock_provider "azurerm" {
   mock_resource "azurerm_log_analytics_workspace" {
     defaults = {
       id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.OperationalInsights/workspaces/log-alz-dev-ab12"
-    }
-  }
-
-  mock_resource "azurerm_key_vault" {
-    defaults = {
-      id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.KeyVault/vaults/kv-alz-dev-ab12"
     }
   }
 }
@@ -52,7 +47,8 @@ mock_provider "time" {
 variables {
   project_user_principals           = {}
   allowed_ip_ranges                 = []
-  deploy_agent_service_dependencies = true
+  deploy_agent_service_dependencies = false
+  deploy_workload                   = false
 }
 
 # The Foundry module is replaced by its outputs: its own tests cover it, and the mocks can't run
@@ -79,28 +75,18 @@ run "defaults" {
   }
 
   assert {
-    condition     = length(local.names.key_vault) <= 24
-    error_message = "Key Vault name is longer than 24 characters."
-  }
-
-  assert {
     condition     = azurerm_log_analytics_workspace.this.local_authentication_enabled == false && azurerm_application_insights.this.local_authentication_enabled == false
     error_message = "Log Analytics or Application Insights accepts key authentication."
   }
 
   assert {
-    condition     = azurerm_key_vault.this.rbac_authorization_enabled == true && azurerm_key_vault.this.purge_protection_enabled == true
-    error_message = "Key Vault is not on RBAC authorization with purge protection."
+    condition     = length(azurerm_key_vault.this) == 0 && length(azurerm_app_configuration.this) == 0 && length(azurerm_search_service.app) == 0 && output.key_vault_name == null
+    error_message = "With the workload off, a workload resource is still planned."
   }
 
   assert {
-    condition     = azurerm_key_vault.this.network_acls[0].default_action == "Allow"
-    error_message = "With no allowed_ip_ranges, Key Vault is not open to all networks."
-  }
-
-  assert {
-    condition     = azurerm_monitor_diagnostic_setting.key_vault.log_analytics_workspace_id == azurerm_log_analytics_workspace.this.id
-    error_message = "Key Vault diagnostics don't go to Log Analytics."
+    condition     = length(azurerm_search_service.agent) == 0 && output.agent_service_setup == "basic"
+    error_message = "With the Agent Service dependencies off, their AI Search is still planned."
   }
 
   assert {
@@ -124,8 +110,8 @@ run "defaults" {
   }
 
   assert {
-    condition     = local.foundry_account.create_ai_agent_service == true && local.foundry_projects.main.create_project_connections == true
-    error_message = "The Agent Service dependencies switch is not on by default (see agent_service.tftest.hcl)."
+    condition     = local.foundry_account.create_ai_agent_service == false && local.foundry_projects.main.create_project_connections == false
+    error_message = "With the Agent Service dependencies off, Foundry still gets a capability host or connections (see agent_service.tftest.hcl)."
   }
 
   assert {
@@ -144,11 +130,6 @@ run "ip_rules_and_project_users" {
         principal_id = "00000000-0000-0000-0000-00000000000a"
       }
     }
-  }
-
-  assert {
-    condition     = azurerm_key_vault.this.network_acls[0].default_action == "Deny" && contains(azurerm_key_vault.this.network_acls[0].ip_rules, "203.0.113.0/24")
-    error_message = "allowed_ip_ranges does not restrict Key Vault."
   }
 
   assert {

@@ -1,4 +1,4 @@
-# The Foundry Agent Service dependencies switch (deployment plan, "The Agent Service
+# Group 2, the Foundry Agent Service dependencies switch (deployment plan, "The Agent Service
 # dependencies switch"). On: the standard agent setup with our own Cosmos DB, AI Search and
 # Storage, their project connections, capability hosts and RBAC. Off: the basic setup, with
 # Microsoft-managed storage. With existing_agent_service_dependencies, an existing dedicated

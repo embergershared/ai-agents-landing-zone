@@ -1,4 +1,4 @@
-# The application platform and data switches. Offline: every provider is mocked and the
+# Group 3, the workload switch (deploy_workload). Offline: every provider is mocked and the
 # Foundry module is replaced by its outputs.
 mock_provider "azurerm" {
   override_during = plan
@@ -100,8 +100,7 @@ variables {
   project_user_principals           = {}
   allowed_ip_ranges                 = []
   deploy_agent_service_dependencies = true
-  deploy_application_platform       = true
-  deploy_application_data           = true
+  deploy_workload                   = true
   app_settings_writer_principals = {
     owner = {
       principal_id = "00000000-0000-0000-0000-0000000000b1"
@@ -109,7 +108,7 @@ variables {
   }
 }
 
-run "platform_and_data_on" {
+run "workload_on" {
   command = plan
 
   assert {
@@ -158,8 +157,28 @@ run "platform_and_data_on" {
   }
 
   assert {
-    condition     = contains(keys(azurerm_app_configuration_key.settings), "landingzone:app_data:search_endpoint")
-    error_message = "App Configuration does not hold the application data endpoints."
+    condition     = contains(keys(azurerm_app_configuration_key.settings), "landingzone:app_data:search_endpoint") && azurerm_app_configuration_key.settings["landingzone:key_vault:uri"].value == "https://kv-alz-dev-ab12.vault.azure.net/"
+    error_message = "App Configuration does not hold the application data endpoints or the Key Vault URI."
+  }
+
+  assert {
+    condition     = length(local.names.key_vault) <= 24 && output.key_vault_name == "kv-alz-dev-ab12"
+    error_message = "Key Vault name is longer than 24 characters, or not in the outputs."
+  }
+
+  assert {
+    condition     = azurerm_key_vault.this[0].rbac_authorization_enabled == true && azurerm_key_vault.this[0].purge_protection_enabled == true
+    error_message = "Key Vault is not on RBAC authorization with purge protection."
+  }
+
+  assert {
+    condition     = azurerm_key_vault.this[0].network_acls[0].default_action == "Allow"
+    error_message = "With no allowed_ip_ranges, Key Vault is not open to all networks."
+  }
+
+  assert {
+    condition     = azurerm_monitor_diagnostic_setting.key_vault[0].log_analytics_workspace_id == azurerm_log_analytics_workspace.this.id
+    error_message = "Key Vault diagnostics don't go to Log Analytics."
   }
 
   assert {
@@ -183,44 +202,59 @@ run "platform_and_data_on" {
   }
 }
 
-run "platform_off" {
+run "workload_off" {
   command = plan
 
   variables {
-    deploy_application_platform = false
+    deploy_workload = false
   }
 
   assert {
     condition     = length(azurerm_app_configuration.this) == 0 && length(azurerm_container_registry.this) == 0 && length(azurerm_container_app_environment.this) == 0 && length(azurerm_user_assigned_identity.app) == 0
-    error_message = "With the platform off, a platform resource is still planned."
+    error_message = "With the workload off, an application platform resource is still planned."
   }
 
   assert {
-    condition     = length(azurerm_app_configuration_key.settings) == 0 && length(azurerm_role_assignment.app_search_index) == 0 && length(azurerm_role_assignment.app_blob_data) == 0
-    error_message = "With the platform off, settings or data roles are still planned."
-  }
-
-  assert {
-    condition     = length(azurerm_search_service.app) == 1 && length(azurerm_storage_account.app) == 1
-    error_message = "With only the platform off, the application data is not planned."
-  }
-}
-
-run "data_off" {
-  command = plan
-
-  variables {
-    deploy_application_data = false
+    condition     = length(azurerm_key_vault.this) == 0 && length(azurerm_monitor_diagnostic_setting.key_vault) == 0
+    error_message = "With the workload off, Key Vault is still planned."
   }
 
   assert {
     condition     = length(azurerm_search_service.app) == 0 && length(azurerm_storage_account.app) == 0 && length(azurerm_role_assignment.app_search_index) == 0 && length(azurerm_role_assignment.app_blob_data) == 0
-    error_message = "With the data off, a data resource is still planned."
+    error_message = "With the workload off, the application data is still planned."
   }
 
   assert {
-    condition     = contains(keys(azurerm_app_configuration_key.settings), "landingzone:app_data:search_endpoint") == false && length(azurerm_app_configuration.this) == 1
-    error_message = "With the data off, its settings are still written, or the platform is gone."
+    condition     = length(azurerm_app_configuration_key.settings) == 0 && length(azurerm_role_assignment.app_settings_writer) == 0
+    error_message = "With the workload off, settings or their writers' roles are still planned."
+  }
+
+  assert {
+    condition     = output.key_vault_name == null && output.app_configuration_endpoint == null && output.app_data == null
+    error_message = "With the workload off, its outputs are not null."
+  }
+
+  assert {
+    condition     = length(azurerm_search_service.agent) == 1
+    error_message = "Turning the workload off also removed the Agent Service's AI Search."
+  }
+}
+
+run "workload_on_without_agent_service_dependencies" {
+  command = plan
+
+  variables {
+    deploy_agent_service_dependencies = false
+  }
+
+  assert {
+    condition     = length(azurerm_app_configuration.this) == 1 && length(azurerm_search_service.app) == 1 && length(azurerm_search_service.agent) == 0
+    error_message = "The workload depends on the Agent Service dependencies."
+  }
+
+  assert {
+    condition     = azurerm_app_configuration_key.settings["landingzone:agent_service:setup"].value == "basic"
+    error_message = "App Configuration does not say the Agent Service runs the basic setup."
   }
 }
 
@@ -235,4 +269,30 @@ run "ip_rules" {
     condition     = contains(azurerm_search_service.app[0].allowed_ips, "203.0.113.0/24") && azurerm_storage_account.app[0].network_rules[0].default_action == "Deny"
     error_message = "allowed_ip_ranges does not restrict the application data."
   }
+
+  assert {
+    condition     = azurerm_key_vault.this[0].network_acls[0].default_action == "Deny" && contains(azurerm_key_vault.this[0].network_acls[0].ip_rules, "203.0.113.0/24")
+    error_message = "allowed_ip_ranges does not restrict Key Vault."
+  }
+}
+
+# The two switches deploy_workload replaced fail the plan when a tfvars file still sets them.
+run "removed_platform_switch" {
+  command = plan
+
+  variables {
+    deploy_application_platform = true
+  }
+
+  expect_failures = [var.deploy_application_platform]
+}
+
+run "removed_data_switch" {
+  command = plan
+
+  variables {
+    deploy_application_data = false
+  }
+
+  expect_failures = [var.deploy_application_data]
 }
