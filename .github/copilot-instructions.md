@@ -190,9 +190,11 @@ key, or a data migration) gets a migration path, a backup before it runs, and a 
 
 ## This project
 
-Repo wrapper to deploy Azure AI Agents Landing Zone. The [README](../README.md) explains the
-landing zone and its upstream implementations; [docs/deployment-plan.md](../docs/deployment-plan.md)
-has the design, the phases and the decisions still open.
+Repo wrapper to deploy Azure AI Agents Landing Zone. The [README](../README.md) is a table of
+contents; the root pages (`AGENT-LANDING-ZONE.md`, `IMPLEMENTATIONS.md`, `AGENT-SERVICE.md`,
+`TERRAFORM-PRACTICES.md`, `SOURCES.md`) explain the upstream landing zone;
+[docs/deployment-plan.md](../docs/deployment-plan.md) has the design, the phases and the
+decisions still open.
 
 - **Infrastructure only,** with Terraform: the Agent Landing Zone's Azure resources, not the
   agent applications that run on them.
