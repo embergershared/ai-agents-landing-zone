@@ -21,6 +21,20 @@ project_user_principals = {
   }
 }
 
+# Foundry Agent Service: true = standard setup with our own Cosmos DB, AI Search and Storage;
+# false = basic setup (Microsoft-managed storage).
+deploy_agent_service_dependencies = true
+agent_cosmos_db_serverless        = true
+agent_search_sku                  = "basic"
+agent_search_replica_count        = 1
+
+# Reuse a dedicated existing set instead of creating one (switch on only).
+# existing_agent_service_dependencies = {
+#   cosmos_db_resource_id       = "/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.DocumentDB/databaseAccounts/<name>"
+#   ai_search_resource_id       = "/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Search/searchServices/<name>"
+#   storage_account_resource_id = "/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<name>"
+# }
+
 # Empty: all networks, Entra ID still required.
 allowed_ip_ranges = []
 
