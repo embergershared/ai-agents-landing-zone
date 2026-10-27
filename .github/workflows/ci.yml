@@ -242,8 +242,10 @@ jobs:
         run: terraform fmt -check -recursive -diff
 
       # No Azure sign-in here: init skips the backend, and terraform test runs against mocked
-      # providers (mock_provider). Every root module runs and reports, even after another failed.
+      # providers (mock_provider). Runs after a format failure too; every root module runs and
+      # reports, even after another failed.
       - name: Init, validate and test each root module
+        if: ${{ !cancelled() }}
         run: |
           export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/terraform-plugin-cache"
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
