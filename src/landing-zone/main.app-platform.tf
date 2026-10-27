@@ -47,13 +47,22 @@ resource "azurerm_app_configuration" "this" {
   tags                     = local.tags
 }
 
-# The identity running Terraform writes the settings through the data plane (Entra ID only).
-resource "azurerm_role_assignment" "app_config_data_owner_deployer" {
-  count = local.app_platform ? 1 : 0
+# Whoever runs Terraform reads and writes the settings through the data plane (Entra ID only),
+# even in a plan, so the role can't depend on who runs it: the pipeline identity gets it from
+# src/state-backend, people running Terraform from a workstation get it here.
+resource "azurerm_role_assignment" "app_settings_writer" {
+  for_each = local.app_platform ? var.app_settings_writer_principals : {}
 
   scope              = azurerm_app_configuration.this[0].id
   role_definition_id = local.role_ids.app_configuration_data_owner
-  principal_id       = data.azurerm_client_config.current.object_id
+  principal_id       = each.value.principal_id
+  principal_type     = each.value.principal_type
+}
+
+# The role used to go to the identity running Terraform; keep that assignment as "owner".
+moved {
+  from = azurerm_role_assignment.app_config_data_owner_deployer[0]
+  to   = azurerm_role_assignment.app_settings_writer["owner"]
 }
 
 # Role assignments take a while to reach the data plane.
@@ -61,7 +70,7 @@ resource "time_sleep" "app_config_rbac" {
   count = local.app_platform ? 1 : 0
 
   create_duration = "60s"
-  depends_on      = [azurerm_role_assignment.app_config_data_owner_deployer]
+  depends_on      = [azurerm_role_assignment.app_settings_writer]
 }
 
 resource "azurerm_app_configuration_key" "settings" {
