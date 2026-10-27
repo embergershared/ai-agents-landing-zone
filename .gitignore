@@ -10,13 +10,7 @@ config.env
 *.key
 secrets.json
 
-# ---- Local data: databases, their WAL files and backups ----
-*.db
-*.db-wal
-*.db-shm
-*.db-journal
-*.sqlite
-*.sqlite3
+# ---- Local data: backups and artifacts ----
 backups/
 artifacts/
 
@@ -38,31 +32,6 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
-
-# ---- .NET ----
-bin/
-obj/
-TestResults/
-*.trx
-*.user
-*.suo
-*.csproj.lscache
-.vs/
-*.nupkg
-*.snupkg
-BenchmarkDotNet.Artifacts/
-
-# ---- Python ----
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-*.egg-info/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.coverage
-htmlcov/
 
 # ---- Node (tooling only) ----
 node_modules/
