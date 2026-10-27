@@ -35,6 +35,13 @@ agent_search_replica_count        = 1
 #   storage_account_resource_id = "/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<name>"
 # }
 
+# Application platform and data (decision D2).
+deploy_application_platform = true
+deploy_application_data     = true
+app_configuration_sku       = "standard"
+container_registry_sku      = "Basic"
+app_search_sku              = "basic"
+
 # Empty: all networks, Entra ID still required.
 allowed_ip_ranges = []
 
