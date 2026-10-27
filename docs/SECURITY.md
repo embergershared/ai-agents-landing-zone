@@ -22,5 +22,5 @@ dependency goes to that project.
 
 - Secret scanning with push protection, Dependabot alerts and security updates, and CodeQL.
 - Dependencies locked with hashes, from an approved feed, and at least 7 days old
-  ([docs/supply-chain.md](docs/supply-chain.md)).
+  ([docs/supply-chain.md](supply-chain.md)).
 - GitHub Actions pinned by commit SHA, with read-only tokens by default.

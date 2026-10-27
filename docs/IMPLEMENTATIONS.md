@@ -2,7 +2,7 @@
 
 Facts on this page were read on **2026-10-27** from the sources in [SOURCES.md](SOURCES.md). The
 upstream projects move fast; check the versions there before relying on a detail.
-Back to the [README](README.md).
+Back to the [README](../README.md).
 
 The ways to deploy the Agent Landing Zone, what each one can and cannot do, and how their settings map
 to each other.
