@@ -16,7 +16,9 @@ applyTo: ".github/workflows/**"
 - **GitHub-hosted runners only.** This repository is public: a self-hosted runner would run
   code from fork PRs on that machine.
 - **Deploys:** behind a GitHub environment and an on/off repository variable; Azure through
-  OIDC (`id-token: write`, `azure/login`), IDs from repository variables, never secrets in
-  logs.
+  OIDC (`id-token: write`, `azure/login`), never secrets in logs. The logs are public: tenant,
+  subscription, client and principal IDs and resource names come from repository secrets so
+  GitHub masks them (`::add-mask::` for values inside a JSON secret), and Terraform's plan and
+  apply output goes to a file, with only the counts in the log and the job summary.
 - **`CI result`** in `ci.yml` is the single check to require: add new CI jobs to its `needs`.
 - actionlint (with shellcheck) runs in CI on every workflow change.

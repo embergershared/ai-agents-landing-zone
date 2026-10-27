@@ -2,6 +2,8 @@
 # one environment on demand from main. Azure sign-in through OIDC (workload identity
 # federation) with the pipeline identity of src/state-backend: no client secret exists.
 # Off until the repository variable TF_DEPLOY_ENABLED is "true" (docs/ci-cd.md, "Deploys").
+# The logs are public: the IDs and names come from repository secrets, so GitHub masks them,
+# and the plan and the apply print only their counts (errors still show).
 name: Terraform deploy
 
 on:
@@ -37,14 +39,14 @@ env:
   TERRAFORM_VERSION: 1.16.6
   ARM_USE_OIDC: true
   ARM_USE_AZUREAD: true
-  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   # The pipeline identity has rights on the environments' resource groups only, not on the
   # subscription's resource providers (registered once by the owner).
   ARM_RESOURCE_PROVIDER_REGISTRATIONS: none
-  TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP }}
-  TFSTATE_STORAGE_ACCOUNT: ${{ vars.TFSTATE_STORAGE_ACCOUNT }}
+  TFSTATE_RESOURCE_GROUP: ${{ secrets.TFSTATE_RESOURCE_GROUP }}
+  TFSTATE_STORAGE_ACCOUNT: ${{ secrets.TFSTATE_STORAGE_ACCOUNT }}
 
 jobs:
   disabled:
@@ -59,7 +61,10 @@ jobs:
 
   plan:
     name: Plan (${{ matrix.environment }})
-    if: vars.TF_DEPLOY_ENABLED == 'true' && github.event_name == 'pull_request'
+    # PRs from forks get no secrets and no OIDC token: skip them.
+    if: >-
+      vars.TF_DEPLOY_ENABLED == 'true' && github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -71,8 +76,8 @@ jobs:
         environment: [dev]
     env:
       ENVIRONMENT: ${{ matrix.environment }}
-      TF_VAR_project_user_principals: ${{ vars[format('PROJECT_USER_PRINCIPALS_{0}', matrix.environment)] || '{}' }}
-      TF_VAR_app_settings_writer_principals: ${{ vars[format('APP_SETTINGS_WRITERS_{0}', matrix.environment)] || '{}' }}
+      TF_VAR_project_user_principals: ${{ secrets[format('PROJECT_USER_PRINCIPALS_{0}', matrix.environment)] || '{}' }}
+      TF_VAR_app_settings_writer_principals: ${{ secrets[format('APP_SETTINGS_WRITERS_{0}', matrix.environment)] || '{}' }}
     defaults:
       run:
         working-directory: src/landing-zone
@@ -86,6 +91,13 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
+      - name: Mask the principal IDs
+        run: |
+          set -o pipefail
+          # A secret is masked as a whole value: mask each principal ID inside the JSON too.
+          jq -r '.[].principal_id' <<<"$TF_VAR_project_user_principals $TF_VAR_app_settings_writer_principals" |
+            while read -r id; do echo "::add-mask::$id"; done
+
       - name: Init (state in tfstate-${{ matrix.environment }})
         run: |
           terraform init -lockfile=readonly \
@@ -97,19 +109,16 @@ jobs:
             -backend-config="use_oidc=true"
 
       - name: Plan
-        run: terraform plan -lock-timeout=5m -var-file="environments/$ENVIRONMENT.tfvars" -out=tfplan
+        # The full plan (names, IDs, settings) stays on the runner; errors go to stderr and show.
+        run: terraform plan -no-color -lock-timeout=5m -var-file="environments/$ENVIRONMENT.tfvars" -out=tfplan > plan.log
 
-      - name: Plan in the job summary
+      - name: Plan counts
         run: |
-          {
-            echo "### Terraform plan: $ENVIRONMENT"
-            echo '<details><summary>Plan</summary>'
-            echo
-            echo '```'
-            terraform show -no-color tfplan | head -c 60000
-            echo '```'
-            echo '</details>'
-          } >> "$GITHUB_STEP_SUMMARY"
+          set -o pipefail
+          counts=$(terraform show -json tfplan | jq -r '[.resource_changes[]?.change.actions] |
+            "\(map(select(index("create"))) | length) to add, \(map(select(index("update"))) | length) to change, \(map(select(index("delete"))) | length) to destroy."')
+          echo "Plan: $counts"
+          printf '### Terraform plan: %s\n\n%s\n' "$ENVIRONMENT" "$counts" >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: ${{ inputs.action }} (${{ inputs.environment }})
@@ -125,8 +134,8 @@ jobs:
     env:
       ENVIRONMENT: ${{ inputs.environment }}
       ACTION: ${{ inputs.action }}
-      TF_VAR_project_user_principals: ${{ vars[format('PROJECT_USER_PRINCIPALS_{0}', inputs.environment)] || '{}' }}
-      TF_VAR_app_settings_writer_principals: ${{ vars[format('APP_SETTINGS_WRITERS_{0}', inputs.environment)] || '{}' }}
+      TF_VAR_project_user_principals: ${{ secrets[format('PROJECT_USER_PRINCIPALS_{0}', inputs.environment)] || '{}' }}
+      TF_VAR_app_settings_writer_principals: ${{ secrets[format('APP_SETTINGS_WRITERS_{0}', inputs.environment)] || '{}' }}
     defaults:
       run:
         working-directory: src/landing-zone
@@ -140,6 +149,13 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
+      - name: Mask the principal IDs
+        run: |
+          set -o pipefail
+          # A secret is masked as a whole value: mask each principal ID inside the JSON too.
+          jq -r '.[].principal_id' <<<"$TF_VAR_project_user_principals $TF_VAR_app_settings_writer_principals" |
+            while read -r id; do echo "::add-mask::$id"; done
+
       - name: Init (state in tfstate-${{ inputs.environment }})
         run: |
           terraform init -lockfile=readonly \
@@ -151,20 +167,22 @@ jobs:
             -backend-config="use_oidc=true"
 
       - name: Plan
-        run: terraform plan -lock-timeout=5m -var-file="environments/$ENVIRONMENT.tfvars" -out=tfplan
+        # The full plan (names, IDs, settings) stays on the runner; errors go to stderr and show.
+        run: terraform plan -no-color -lock-timeout=5m -var-file="environments/$ENVIRONMENT.tfvars" -out=tfplan > plan.log
 
-      - name: Plan in the job summary
+      - name: Plan counts
         run: |
-          {
-            echo "### Terraform plan: $ENVIRONMENT ($ACTION)"
-            echo '<details><summary>Plan</summary>'
-            echo
-            echo '```'
-            terraform show -no-color tfplan | head -c 60000
-            echo '```'
-            echo '</details>'
-          } >> "$GITHUB_STEP_SUMMARY"
+          set -o pipefail
+          counts=$(terraform show -json tfplan | jq -r '[.resource_changes[]?.change.actions] |
+            "\(map(select(index("create"))) | length) to add, \(map(select(index("update"))) | length) to change, \(map(select(index("delete"))) | length) to destroy."')
+          echo "Plan: $counts"
+          printf '### Terraform plan: %s (%s)\n\n%s\n' "$ENVIRONMENT" "$ACTION" "$counts" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Apply the plan above
         if: inputs.action == 'apply'
-        run: terraform apply -lock-timeout=5m tfplan
+        # Each resource's progress (names, IDs) stays on the runner; errors go to stderr and show.
+        run: |
+          terraform apply -no-color -lock-timeout=5m tfplan > apply.log
+          result=$(grep -E '^Apply complete!' apply.log)
+          echo "$result"
+          printf '\n%s\n' "$result" >> "$GITHUB_STEP_SUMMARY"
