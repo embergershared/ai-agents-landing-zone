@@ -27,6 +27,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   estimate per environment, in `docs/runbook.md` (#12).
 - `search_location`: both AI Search services can run in another region than the landing zone; dev uses Norway East,
   because Sweden Central had no AI Search capacity (#9).
+- Agent tracing: the Foundry project connects to Application Insights through its managed identity (Monitoring Metrics
+  Publisher), and `project_user_principals` get Log Analytics Reader to see the traces. The standard setup also gives
+  the project Storage Account Contributor on the Agent Service storage account. Decision 0001 records why there is no
+  Agent Service Key Vault and why Foundry User stays on the account (#44).
 
 ### Changed
 - Dev carries the tenant policy's exemption tag, so Storage, Key Vault and Cosmos DB keep their public endpoints, and runs

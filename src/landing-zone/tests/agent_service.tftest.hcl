@@ -60,7 +60,22 @@ override_module {
   outputs = {
     ai_foundry_name = "aif-alz-dev-ab12"
     ai_foundry_id   = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.CognitiveServices/accounts/aif-alz-dev-ab12"
+    ai_foundry_project_id = {
+      main = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.CognitiveServices/accounts/aif-alz-dev-ab12/projects/proj-alz-dev"
+    }
+    ai_foundry_project_system_identity_principal_id = {
+      main = "00000000-0000-0000-0000-00000000000b"
+    }
+    storage_account_id = {
+      agent = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.Storage/storageAccounts/stalzdevagentab12"
+    }
   }
+}
+
+# The project's tracing connection: azapi has no mock (the module's ephemeral resources need it).
+override_resource {
+  target          = azapi_resource.app_insights_connection
+  override_during = plan
 }
 
 # A local terraform.tfvars is loaded by terraform test too: pin the inputs the runs depend on.
@@ -87,6 +102,11 @@ run "switch_on_creates_the_dependencies" {
   assert {
     condition     = local.foundry_projects.main.cosmos_db_connection.new_resource_map_key == "agent" && local.foundry_projects.main.ai_search_connection.existing_resource_id == azurerm_search_service.agent[0].id && local.foundry_projects.main.storage_account_connection.new_resource_map_key == "agent"
     error_message = "The project does not connect to the new dependency set."
+  }
+
+  assert {
+    condition     = endswith(azurerm_role_assignment.project_storage_account_contributor[0].scope, "/stalzdevagentab12") && azurerm_role_assignment.project_storage_account_contributor[0].principal_id == "00000000-0000-0000-0000-00000000000b" && endswith(azurerm_role_assignment.project_storage_account_contributor[0].role_definition_id, "17d1049b-9a84-46fb-8f53-869881c3d3ab")
+    error_message = "The project identity lacks Storage Account Contributor on the new storage account."
   }
 
   assert {
@@ -148,6 +168,11 @@ run "switch_off_uses_the_basic_setup" {
   }
 
   assert {
+    condition     = length(azurerm_role_assignment.project_storage_account_contributor) == 0
+    error_message = "With the switch off, the project still gets Storage Account Contributor."
+  }
+
+  assert {
     condition     = output.agent_service_setup == "basic" && output.agent_service_dependencies == null
     error_message = "The outputs don't report the basic setup."
   }
@@ -177,6 +202,11 @@ run "switch_on_with_existing_dependencies" {
   assert {
     condition     = endswith(local.foundry_projects.main.cosmos_db_connection.existing_resource_id, "/cosmos-shared") && endswith(local.foundry_projects.main.ai_search_connection.existing_resource_id, "/srch-shared") && endswith(local.foundry_projects.main.storage_account_connection.existing_resource_id, "/stshared")
     error_message = "The project does not connect to the existing dependencies."
+  }
+
+  assert {
+    condition     = endswith(azurerm_role_assignment.project_storage_account_contributor[0].scope, "/stshared")
+    error_message = "The project identity lacks Storage Account Contributor on the existing storage account."
   }
 
   assert {
