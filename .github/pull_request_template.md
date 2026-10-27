@@ -8,7 +8,7 @@ Closes #
 ## Database
 <!-- Only when the schema or stored data shape changed; delete this section otherwise.
 - Migration: `<name>`: what it changes; additive or destructive.
-- Backup: `python scripts/db/sqlite_backup.py backup <db> --reason <what>`
+- Backup: the command that took it, and the backup's name.
 - Rollback: the `Down` migration or rollback script (command), or restore the backup.
 - Tested on: a copy of the real database (row counts before/after), an empty database, an older backup.
 -->
