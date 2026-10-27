@@ -26,3 +26,12 @@ output "backend_config" {
     }
   }
 }
+
+output "github_deployer" {
+  description = "Pipeline identity: set client_id as the AZURE_CLIENT_ID repository variable (docs/ci-cd.md)."
+  value = local.deployer ? {
+    client_id    = azurerm_user_assigned_identity.deployer[0].client_id
+    principal_id = azurerm_user_assigned_identity.deployer[0].principal_id
+    subjects     = values(local.deployer_subjects)
+  } : null
+}

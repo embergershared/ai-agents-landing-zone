@@ -10,6 +10,20 @@ mock_provider "azurerm" {
       subscription_id = "00000000-0000-0000-0000-000000000003"
     }
   }
+
+  mock_resource "azurerm_storage_account" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-tfstate-ab12/providers/Microsoft.Storage/storageAccounts/stalztfstateab12"
+    }
+  }
+
+  mock_resource "azurerm_user_assigned_identity" {
+    defaults = {
+      id           = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-tfstate-ab12/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-alz-github-deployer"
+      principal_id = "00000000-0000-0000-0000-0000000000d1"
+      client_id    = "00000000-0000-0000-0000-0000000000d2"
+    }
+  }
 }
 
 mock_provider "random" {
@@ -24,6 +38,15 @@ mock_provider "random" {
 
 run "defaults" {
   command = plan
+
+  variables {
+    github_deployer = null
+  }
+
+  assert {
+    condition     = length(azurerm_user_assigned_identity.deployer) == 0 && length(azurerm_federated_identity_credential.deployer) == 0 && output.github_deployer == null
+    error_message = "Without github_deployer, a pipeline identity is planned."
+  }
 
   assert {
     condition     = azurerm_storage_account.state.name == "stalztfstateab12"
@@ -125,4 +148,65 @@ run "no_environment" {
   }
 
   expect_failures = [var.environments]
+}
+
+run "github_deployer" {
+  command = plan
+
+  variables {
+    github_deployer = {
+      repository = "contoso/landing-zone"
+      environments = {
+        dev = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12"
+      }
+    }
+  }
+
+  assert {
+    condition     = azurerm_user_assigned_identity.deployer[0].name == "id-alz-github-deployer"
+    error_message = "The pipeline identity is missing or misnamed."
+  }
+
+  assert {
+    condition     = azurerm_federated_identity_credential.deployer["env-dev"].subject == "repo:contoso/landing-zone:environment:dev" && azurerm_federated_identity_credential.deployer["pull-request"].subject == "repo:contoso/landing-zone:pull_request"
+    error_message = "The federated credentials don't trust the environment and pull requests of the repository."
+  }
+
+  assert {
+    condition     = azurerm_federated_identity_credential.deployer["env-dev"].issuer == "https://token.actions.githubusercontent.com" && contains(azurerm_federated_identity_credential.deployer["env-dev"].audience, "api://AzureADTokenExchange")
+    error_message = "The federated credential doesn't use GitHub's OIDC issuer and audience."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.deployer_contributor["dev"].scope == "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12" && endswith(azurerm_role_assignment.deployer_contributor["dev"].role_definition_id, "b24988ac-6180-42a0-ab88-20f7382dd24c")
+    error_message = "The pipeline identity is not Contributor on the environment's scope."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.deployer_rbac_admin["dev"].condition_version == "2.0" && strcontains(azurerm_role_assignment.deployer_rbac_admin["dev"].condition, "53ca6127-db72-4b80-b1b0-d745d6d5456d") && strcontains(azurerm_role_assignment.deployer_rbac_admin["dev"].condition, "roleAssignments/delete")
+    error_message = "The RBAC Administrator role is not limited to the landing zone's roles."
+  }
+
+  assert {
+    condition     = strcontains(azurerm_role_assignment.deployer_rbac_admin["dev"].condition, "b24988ac-6180-42a0-ab88-20f7382dd24c") == false
+    error_message = "The pipeline identity could hand out Contributor."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.deployer_state[0].scope == azurerm_storage_account.state.id && azurerm_role_assignment.deployer_state[0].principal_id == "00000000-0000-0000-0000-0000000000d1"
+    error_message = "The pipeline identity can't read and write state."
+  }
+}
+
+run "invalid_repository" {
+  command = plan
+
+  variables {
+    github_deployer = {
+      repository   = "not a repository"
+      environments = {}
+    }
+  }
+
+  expect_failures = [var.github_deployer]
 }
