@@ -72,6 +72,7 @@ jobs:
     env:
       ENVIRONMENT: ${{ matrix.environment }}
       TF_VAR_project_user_principals: ${{ vars[format('PROJECT_USER_PRINCIPALS_{0}', matrix.environment)] || '{}' }}
+      TF_VAR_app_settings_writer_principals: ${{ vars[format('APP_SETTINGS_WRITERS_{0}', matrix.environment)] || '{}' }}
     defaults:
       run:
         working-directory: src/landing-zone
@@ -125,6 +126,7 @@ jobs:
       ENVIRONMENT: ${{ inputs.environment }}
       ACTION: ${{ inputs.action }}
       TF_VAR_project_user_principals: ${{ vars[format('PROJECT_USER_PRINCIPALS_{0}', inputs.environment)] || '{}' }}
+      TF_VAR_app_settings_writer_principals: ${{ vars[format('APP_SETTINGS_WRITERS_{0}', inputs.environment)] || '{}' }}
     defaults:
       run:
         working-directory: src/landing-zone
