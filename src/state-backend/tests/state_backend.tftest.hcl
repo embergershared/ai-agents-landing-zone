@@ -198,6 +198,39 @@ run "github_deployer" {
   }
 }
 
+run "github_deployer_immutable_subject" {
+  command = plan
+
+  variables {
+    github_deployer = {
+      repository     = "contoso/landing-zone"
+      subject_prefix = "repo:contoso@111/landing-zone@222"
+      environments = {
+        dev = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12"
+      }
+    }
+  }
+
+  assert {
+    condition     = azurerm_federated_identity_credential.deployer["env-dev"].subject == "repo:contoso@111/landing-zone@222:environment:dev" && azurerm_federated_identity_credential.deployer["pull-request"].subject == "repo:contoso@111/landing-zone@222:pull_request"
+    error_message = "The federated credentials don't use the immutable subject prefix."
+  }
+}
+
+run "invalid_subject_prefix" {
+  command = plan
+
+  variables {
+    github_deployer = {
+      repository     = "contoso/landing-zone"
+      subject_prefix = "contoso/landing-zone"
+      environments   = {}
+    }
+  }
+
+  expect_failures = [var.github_deployer]
+}
+
 run "invalid_repository" {
   command = plan
 

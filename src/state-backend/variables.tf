@@ -74,15 +74,21 @@ variable "tags" {
 
 variable "github_deployer" {
   type = object({
-    repository   = string
-    environments = map(string)
+    repository     = string
+    environments   = map(string)
+    subject_prefix = optional(string)
   })
-  description = "Pipeline identity for GitHub Actions: repository (owner/name) and, per GitHub environment, the resource ID of the scope it deploys to (a resource group or subscription). Null: no pipeline identity."
+  description = "Pipeline identity for GitHub Actions: repository (owner/name); per GitHub environment, the resource ID of the scope it deploys to (a resource group or subscription); and the OIDC subject prefix GitHub sends, when it isn't repo:<owner>/<name> (immutable subjects: repo:<owner>@<owner-id>/<name>@<repo-id>). Null: no pipeline identity."
   default     = null
 
   validation {
     condition     = var.github_deployer == null || can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_deployer.repository))
     error_message = "github_deployer.repository is owner/name."
+  }
+
+  validation {
+    condition     = var.github_deployer == null || try(var.github_deployer.subject_prefix == null || startswith(var.github_deployer.subject_prefix, "repo:"), false)
+    error_message = "github_deployer.subject_prefix starts with repo: (read it with: gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix)."
   }
 }
 

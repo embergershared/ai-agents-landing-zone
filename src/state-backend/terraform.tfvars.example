@@ -10,8 +10,11 @@ state_contributor_principal_ids = []
 
 # Pipeline identity for GitHub Actions (docs/ci-cd.md, Deploys): the repository, and per GitHub
 # environment the scope it deploys to.
+# subject_prefix: only when GitHub sends immutable subjects; read it with
+#   gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix
 # github_deployer = {
-#   repository = "<owner>/<repo>"
+#   repository     = "<owner>/<repo>"
+#   subject_prefix = "repo:<owner>@<owner-id>/<repo>@<repo-id>"
 #   environments = {
 #     dev = "/subscriptions/<subscription-id>/resourceGroups/<landing-zone resource group>"
 #   }

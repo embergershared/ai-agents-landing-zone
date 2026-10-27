@@ -71,7 +71,10 @@ Set one with `gh variable set DOTNET_SOLUTION --body src/App.slnx --repo <owner>
 | By hand (**Run workflow**) on `main`, with an environment and `plan` or `apply` | **Plan**, then **apply** of that plan when `apply` was chosen | `repo:<owner>/<repo>:environment:<env>` |
 
 - **Sign-in:** the user-assigned identity `id-<prefix>-github-deployer` from `src/state-backend`
-  (`github_deployer`), with federated credentials for the two subjects above. Terraform reads
+  (`github_deployer`), with federated credentials for the two subjects above. A repository
+  with immutable OIDC subjects sends `repo:<owner>@<owner-id>/<repo>@<repo-id>` as the prefix:
+  set it in `github_deployer.subject_prefix`, as
+  `gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix` reports it. Terraform reads
   `ARM_USE_OIDC`, `ARM_CLIENT_ID`, `ARM_TENANT_ID` and `ARM_SUBSCRIPTION_ID`; no client secret
   exists.
 - **Rights, per environment scope** (the environment's resource group): Contributor, and Role
