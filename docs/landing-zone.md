@@ -122,7 +122,8 @@ Invoke-RestMethod -Method Delete -Uri "$project/assistants/$($agent.id)?api-vers
 - **Foundry diagnostic setting:** every plan shows `log_analytics_destination_type` being set,
   because Azure doesn't keep that value on a Foundry account. This is harmless.
 - **Public network access under a policy that turns it off:** in a subscription where Azure
-  Policy sets `publicNetworkAccess = Disabled` (see [state-backend.md](state-backend.md)),
+  Policy sets `publicNetworkAccess = Disabled` and the environment doesn't carry the policy's
+  exemption (see [state-backend.md](state-backend.md)),
   every plan shows Key Vault's `public_network_access_enabled` changing back to `true`, and
   Key Vault refuses calls from outside Azure. A policy that covers only Storage, Key Vault and
   Cosmos DB leaves the Foundry account's public endpoint on.

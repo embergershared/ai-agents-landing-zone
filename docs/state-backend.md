@@ -10,7 +10,7 @@ once. One container per environment (`tfstate-<env>`) holds that environment's s
 | Locking | Blob leases, built into the `azurerm` backend. |
 | Recovery | Blob versioning, and soft delete of blobs and containers (`soft_delete_retention_days`, 30 by default). |
 | Transport | HTTPS only, TLS 1.2 minimum. |
-| Network | Public endpoint; `allowed_ip_ranges` (empty by default) restricts it to listed ranges. |
+| Network | Public endpoint; `allowed_ip_ranges` (empty by default) restricts it to listed ranges. With none, the account has no network rules block (all networks): the provider reads an explicit allow-all rule set back as absent. |
 | Durability | ZRS by default (`replication_type`). |
 | Deletion | `prevent_destroy` on the storage account. |
 | Pipeline identity | With `github_deployer`: the user-assigned identity GitHub Actions signs in as (OIDC), with state access and its rights on each environment's scope ([ci-cd.md](ci-cd.md#deploys)). |
@@ -80,7 +80,12 @@ If it shows `Disabled`, find the policy in the resource group's activity log
 supports, such as a tag on the resource or resource group, or a Network Security Perimeter.
 Whether to use that exemption is a decision for the subscription's owner. If the answer is
 yes and the exemption is a tag, set it in `tags` (`terraform.tfvars`) and apply again. The
-tag reaches the resource group and the storage account.
+tag reaches the resource group and the storage account, and Terraform turns public access back
+on in the same apply. Do the same for each environment (`tags` in `environments/<env>.tfvars`),
+because the policy also covers the landing zone's Key Vault, Cosmos DB and Storage.
+
+This repository's dev subscription uses the tag exemption (`SecurityControl = Ignore`, owner's
+decision of 2026-10-27).
 
 ## Retire
 
