@@ -5,7 +5,7 @@ resource "azurerm_search_service" "app" {
 
   name                          = local.names.app_search
   resource_group_name           = azurerm_resource_group.this.name
-  location                      = azurerm_resource_group.this.location
+  location                      = local.search_location
   sku                           = var.app_search_sku
   replica_count                 = 1
   partition_count               = 1
