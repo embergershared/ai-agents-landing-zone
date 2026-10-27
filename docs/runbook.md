@@ -51,6 +51,8 @@ Set-Location src/landing-zone
 Copy-Item environments/dev.backend.hcl.example environments/dev.backend.hcl
 terraform init -backend-config=environments/dev.backend.hcl
 $env:TF_VAR_project_user_principals = '{"users":{"principal_id":"<entra-group-object-id>","principal_type":"Group"}}'
+# You write the App Configuration settings: list yourself (az ad signed-in-user show --query id -o tsv)
+$env:TF_VAR_app_settings_writer_principals = '{"me":{"principal_id":"<your-entra-object-id>","principal_type":"User"}}'
 terraform plan -var-file=environments/dev.tfvars -out dev.tfplan
 ```
 
@@ -132,7 +134,7 @@ Retire the state backend only after every environment is gone ([state-backend.md
 | `InsufficientResourcesAvailable` when creating AI Search | The region has no capacity for that SKU right now, whatever the quota. Apply again later, or choose another region or SKU (`agent_search_sku`, `app_search_sku`). |
 | `AADSTS700213: No matching federated identity record` in the deploy workflow | The repository sends immutable OIDC subjects: set `github_deployer.subject_prefix` ([ci-cd.md](ci-cd.md#deploys)). |
 | `AuthorizationFailed` writing a role assignment from the pipeline | The landing zone grants a role that isn't in `deployer_assignable_role_ids`. Add it, and apply the bootstrap. |
-| 403 on App Configuration keys right after the first apply | Role assignments take a few minutes to reach the data plane. Apply again. |
+| 403 on App Configuration keys ("while checking for key ... existence"), in a plan or right after an apply | The caller's App Configuration Data Owner role hasn't reached the data plane yet. It took about 40 minutes for a new pipeline identity here, with calls failing and passing in turns meanwhile. Wait, then run again. People running Terraform from a workstation must be in `app_settings_writer_principals`. |
 | Azure CLI: `Continuous access evaluation ... InteractionRequired` | The sign-in is too old for Microsoft Graph. Run `az login` again. Terraform's management calls don't need Graph. |
 | Every plan changes `log_analytics_destination_type` on Foundry's diagnostic setting | Known and harmless ([landing-zone.md](landing-zone.md#known-plan-noise)). |
 

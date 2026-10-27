@@ -184,3 +184,17 @@ variable "app_search_sku" {
     error_message = "app_search_sku is basic, standard, standard2 or standard3."
   }
 }
+
+variable "app_settings_writer_principals" {
+  type = map(object({
+    principal_id   = string
+    principal_type = optional(string, "User")
+  }))
+  description = "People or groups that run Terraform from a workstation: App Configuration Data Owner, to write the settings. The pipeline identity gets the role from src/state-backend. Keep real object IDs out of committed files."
+  default     = {}
+
+  validation {
+    condition     = alltrue([for p in values(var.app_settings_writer_principals) : contains(["Group", "User", "ServicePrincipal"], p.principal_type)])
+    error_message = "principal_type is Group, User or ServicePrincipal."
+  }
+}

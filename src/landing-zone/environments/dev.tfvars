@@ -14,11 +14,17 @@ model_deployments = {
   }
 }
 
-# Off in dev until the subscription allows public network access on Cosmos DB and Storage (see
-# docs/state-backend.md); then the standard setup can be turned on.
-deploy_agent_service_dependencies = false
+# Standard agent setup: our own Cosmos DB, AI Search and Storage.
+deploy_agent_service_dependencies = true
 
 deploy_application_platform = true
 deploy_application_data     = true
 
 allowed_ip_ranges = []
+
+# Owner decision (2026-10-27): this subscription's Azure Policy turns off public network access
+# on Storage, Key Vault and Cosmos DB unless they or their resource group carry this tag
+# (docs/state-backend.md).
+tags = {
+  SecurityControl = "Ignore"
+}

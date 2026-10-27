@@ -42,6 +42,14 @@ app_configuration_sku       = "standard"
 container_registry_sku      = "Basic"
 app_search_sku              = "basic"
 
+# People who run Terraform from a workstation: App Configuration Data Owner, to write the settings.
+app_settings_writer_principals = {
+  me = {
+    principal_id   = "<your-entra-object-id>"
+    principal_type = "User"
+  }
+}
+
 # Empty: all networks, Entra ID still required.
 allowed_ip_ranges = []
 

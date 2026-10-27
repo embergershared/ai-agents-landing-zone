@@ -84,7 +84,7 @@ run "defaults" {
   }
 
   assert {
-    condition     = azurerm_storage_account.state.network_rules[0].default_action == "Allow"
+    condition     = length(azurerm_storage_account.state.network_rules) == 0
     error_message = "With no allowed_ip_ranges, the account is not open to all networks."
   }
 
@@ -190,6 +190,11 @@ run "github_deployer" {
   assert {
     condition     = strcontains(azurerm_role_assignment.deployer_rbac_admin["dev"].condition, "b24988ac-6180-42a0-ab88-20f7382dd24c") == false
     error_message = "The pipeline identity could hand out Contributor."
+  }
+
+  assert {
+    condition     = endswith(azurerm_role_assignment.deployer_app_settings["dev"].role_definition_id, "5ae67dd6-50cb-40e7-96ff-dc2bfa4b606b") && azurerm_role_assignment.deployer_app_settings["dev"].scope == "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12"
+    error_message = "The pipeline identity can't read and write the environment's settings."
   }
 
   assert {

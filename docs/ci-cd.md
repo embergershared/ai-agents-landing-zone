@@ -57,6 +57,7 @@ ruleset doesn't change.
 | `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | none | Terraform deploy: where it signs in and deploys |
 | `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT` | none | Terraform deploy: the state backend (`backend_config` output) |
 | `PROJECT_USER_PRINCIPALS_<ENV>` | `{}` | Terraform deploy: `project_user_principals` of that environment, as JSON (Entra object IDs stay out of the repository) |
+| `APP_SETTINGS_WRITERS_<ENV>` | `{}` | Terraform deploy: `app_settings_writer_principals` of that environment, as JSON: the people who also run Terraform from a workstation |
 
 Set one with `gh variable set DOTNET_SOLUTION --body src/App.slnx --repo <owner>/<repo>`.
 
@@ -80,7 +81,9 @@ Set one with `gh variable set DOTNET_SOLUTION --body src/App.slnx --repo <owner>
 - **Rights, per environment scope** (the environment's resource group): Contributor, and Role
   Based Access Control Administrator with a condition that allows only the roles the landing
   zone grants (`deployer_assignable_role_ids`). The identity can't grant Contributor or Owner.
-  It also has Storage Blob Data Contributor on the state account. It doesn't register resource
+  It also has App Configuration Data Owner on that scope (a plan reads the settings through the
+  data plane, so the role must exist before its first plan) and Storage Blob Data Contributor on
+  the state account. It doesn't register resource
   providers (`ARM_RESOURCE_PROVIDER_REGISTRATIONS=none`): the owner's first deploy does.
 - **Approval:** the GitHub environment `<env>` accepts deployments from `main` only. Required
   reviewers need a paid GitHub plan for a private repository, so the approval is starting
