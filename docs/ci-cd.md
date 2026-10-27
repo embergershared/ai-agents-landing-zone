@@ -37,7 +37,7 @@ gh api repos/<owner>/<repo>/code-scanning/default-setup --jq .state
 | Ruleset `main` (default branch) | No deletion, no force push, PR required (0 approvals: one maintainer), checks `CI result` and `PR rules` required |
 | Secret scanning, push protection | On: a push with a known secret format is refused |
 | Dependabot alerts and security updates | On |
-| Private vulnerability reporting | On: see [SECURITY.md](../SECURITY.md) |
+| Private vulnerability reporting | On: see [SECURITY.md](SECURITY.md) |
 | CodeQL | Default setup |
 | Issues, wiki, merged branches | Issues on, wiki off, branches deleted on merge |
 

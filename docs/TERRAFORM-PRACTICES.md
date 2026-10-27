@@ -1,6 +1,6 @@
 # Working with Terraform safely
 
-Back to the [README](README.md).
+Back to the [README](../README.md).
 
 From the upstream Terraform guide, and this repository's own rules:
 

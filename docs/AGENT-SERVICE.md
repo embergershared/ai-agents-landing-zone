@@ -2,7 +2,7 @@
 
 Facts on this page were read on **2026-10-27** from the sources in [SOURCES.md](SOURCES.md). The
 upstream projects move fast; check the versions there before relying on a detail.
-Back to the [README](README.md).
+Back to the [README](../README.md).
 
 [Microsoft Learn](https://learn.microsoft.com/azure/foundry/agents/environment-setup) describes
 three setups:
