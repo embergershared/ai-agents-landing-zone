@@ -13,6 +13,7 @@ once. One container per environment (`tfstate-<env>`) holds that environment's s
 | Network | Public endpoint; `allowed_ip_ranges` (empty by default) restricts it to listed ranges. |
 | Durability | ZRS by default (`replication_type`). |
 | Deletion | `prevent_destroy` on the storage account. |
+| Pipeline identity | With `github_deployer`: the user-assigned identity GitHub Actions signs in as (OIDC), with state access and its rights on each environment's scope ([ci-cd.md](ci-cd.md#deploys)). |
 
 The storage account's management-plane properties include its access keys, so they appear
 (marked sensitive) in the bootstrap's own state. With shared key access off, those keys

@@ -71,3 +71,33 @@ variable "tags" {
   description = "Tags on every resource."
   default     = {}
 }
+
+variable "github_deployer" {
+  type = object({
+    repository   = string
+    environments = map(string)
+  })
+  description = "Pipeline identity for GitHub Actions: repository (owner/name) and, per GitHub environment, the resource ID of the scope it deploys to (a resource group or subscription). Null: no pipeline identity."
+  default     = null
+
+  validation {
+    condition     = var.github_deployer == null || can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_deployer.repository))
+    error_message = "github_deployer.repository is owner/name."
+  }
+}
+
+variable "deployer_assignable_role_ids" {
+  type        = list(string)
+  description = "Role definition IDs (GUIDs) the pipeline identity may assign and remove: the roles the landing zone grants. Add one here when the landing zone starts granting it."
+  default = [
+    "53ca6127-db72-4b80-b1b0-d745d6d5456d", # Foundry User
+    "5ae67dd6-50cb-40e7-96ff-dc2bfa4b606b", # App Configuration Data Owner
+    "516239f1-63e1-4d78-a4de-a74fb236a071", # App Configuration Data Reader
+    "7f951dda-4ed3-4680-a7ca-43fe172d538d", # AcrPull
+    "8ebe5a00-799e-43f5-93ac-243d3dce84a7", # Search Index Data Contributor
+    "7ca78c08-252a-4471-8644-bb5ff32d4ba0", # Search Service Contributor
+    "ba92f5b4-2d11-453d-a403-e96b0029c9fe", # Storage Blob Data Contributor
+    "b7e6dc6d-f1e8-4753-8033-0f276bb0955b", # Storage Blob Data Owner
+    "230815da-be43-4aae-9cb4-875f7bd000aa", # Cosmos DB Operator
+  ]
+}

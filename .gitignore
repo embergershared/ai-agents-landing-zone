@@ -26,6 +26,8 @@ artifacts/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+# Per-environment values of the landing zone are committed (no secrets, no real IDs).
+!src/landing-zone/environments/*.tfvars
 *.tfplan
 *.backend.hcl
 crash.log
