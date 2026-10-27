@@ -90,15 +90,16 @@ All work goes through it: features, fixes, optimizations, docs, refactors, and c
   `.env` gitignored with `.env.example` as the template.
 - **Don't read live `.env`, `.env.*`, `config.env`, or other secret files.** Learn the variable
   names from `.env.example` / `.env.sample` / `.env.template`.
-- **Approved package feeds only.** NuGet only from the feed in `nuget.config`; Python only via
-  `--index-url https://packagefeedproxy.microsoft.io/pypi/simple/`. Never add nuget.org or PyPI
-  fallbacks: fail closed and report when a package or version can't be verified. Where that
+- **Approved package sources only.** Terraform providers and modules from the Terraform
+  registry, pinned and locked; Python tooling only via
+  `--index-url https://packagefeedproxy.microsoft.io/pypi/simple/`. Never add a second source as
+  a fallback: fail closed and report when a package or version can't be verified. Where that
   feed can't be reached, a contributor switches the source instead (see
-  `docs/supply-chain.md`, "Turn the approved feed off"); the age gate and hashes still apply.
-- **Package age gate: 7 days.** Any new package version, GitHub Action release, or base image
-  must have been published at least 7 days ago. Python dependencies are locked with hashes by
-  `scripts/lock_requirements.py`; NuGet uses lock files (`packages.lock.json`). CI checks every
-  locked version with `scripts/check_package_age.py`, and Dependabot waits 7 days too.
+  `docs/supply-chain.md`, "Turn the approved feed off"); the age gate still applies.
+- **Package age gate: 7 days.** Any new Terraform, provider or module version, package version,
+  GitHub Action release, or base image must have been published at least 7 days ago. Provider
+  versions are locked with hashes in each `.terraform.lock.hcl`
+  (`.github/instructions/terraform.instructions.md`), and Dependabot waits 7 days too.
 
 ## Safety
 
@@ -153,8 +154,8 @@ All work goes through it: features, fixes, optimizations, docs, refactors, and c
 Every change to a database's schema or stored data shape (table, column, index, constraint,
 key, or a data migration) gets a migration path, a backup before it runs, and a way back.
 `docs/database.md` has the procedure and `scripts/db/` the scripts.
-- **Scripted, never by hand:** EF Core migrations (`scripts/db/Invoke-EfMigration.ps1`), or the
-  project's own mechanism. Never alter a database by hand.
+- **Scripted, never by hand:** through the project's own mechanism (EF Core migrations, Alembic,
+  a versioned SQL script). Never alter a database by hand.
 - **Backup first** of any database holding real data (local dev data included), named with a
   timestamp and the reason: `scripts/db/sqlite_backup.py backup <db> --reason card-history`
   writes `<name>_Backup_<yyyyMMdd_HHmmss>_before-card-history.db` (WAL-safe) and checks it.

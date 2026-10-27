@@ -28,46 +28,34 @@ re-create them. Most of these projects are public: the template assumes it.
 | Path | What it does |
 |---|---|
 | `.github/copilot-instructions.md` | **The rules** for people and AI coding assistants: authorship, customer data, issue → branch → PR, branch names, commits, secrets, feeds and age gate, safety, testing, database migrations, PowerShell, nano. Ends with a *This project* section to fill in. |
-| `.github/instructions/*.instructions.md` | Copilot rules per file type: .NET, Python, workflows. |
-| `.github/workflows/ci.yml` | Build, lint, test (.NET and Python, auto-detected), workflow lint, package age gate, one `CI result` check. |
+| `.github/instructions/*.instructions.md` | Copilot rules per file type: Terraform (added here), workflows. |
+| `.github/workflows/ci.yml` | Build, lint, test (.NET, Python and, added here, Terraform, auto-detected), workflow lint, package age gate, one `CI result` check. |
 | `.github/workflows/pr-rules.yml` | Branch name (no owner prefix from a fork), base branch, linked issue, no AI attribution, commit style warnings. |
-| `.github/dependabot.yml` | GitHub Actions updates with a 7-day cooldown (NuGet and Docker ready to uncomment). |
+| `.github/dependabot.yml` | GitHub Actions and (added here) Terraform updates with a 7-day cooldown (NuGet and Docker ready to uncomment). |
 | `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/` | PR body (What, Database, Tests) and issue forms (feature, bug, phase). |
 | `README.md` | Project page, with the "personal project, not an official Microsoft product" note. |
 | `SECURITY.md`, `SUPPORT.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` | Private vulnerability reporting, as-is support, how to contribute, Contributor Covenant. |
 | `.editorconfig`, `.gitattributes`, `.gitignore`, `.dockerignore` | Editor rules, line endings (LF for Linux files), ignored secrets/databases/build output. |
-| `global.json`, `Directory.Build.props`, `Directory.Packages.props`, `nuget.config` | .NET 10 SDK, `net10.0`, analyzers, lock files, central package versions, approved feed only. |
-| `.python-version`, `ruff.toml` | Python 3.13 and ruff settings. |
-| `scripts/lock_requirements.py` | `requirements*.in` → hash-locked `requirements*.lock`, through the approved feed, 7-day gate. |
 | `scripts/check_package_age.py` | CI gate: every locked NuGet/PyPI version is at least 7 days old. |
 | `scripts/db/sqlite_backup.py` | WAL-safe SQLite backup, copy, verify, compare, restore. |
-| `scripts/db/Invoke-EfMigration.ps1` | EF Core migrations: backup, trial on a copy, apply, restore on failure, rollback. |
 | `scripts/Initialize-Repo.ps1` | One-time setup of a new repository (removes itself). |
 | `docs/` | CI/CD and repository settings, supply chain (and how to turn the approved feed off), database, decisions (ADR template). |
 | `CHANGELOG.md`, `LICENSE` | Keep a Changelog; MIT. |
+
+This repository removed the template's .NET and Python stack files when it was initialized
+(#1): it deploys infrastructure with Terraform, whose tooling was added in #6.
 
 The template has no agent-tool configuration beyond Copilot's instruction files: anything a
 maintainer's own tools need stays in that maintainer's user settings, not in the repository.
 
 ## Add a stack
 
-- **.NET:** `dotnet new sln --format slnx`, add projects without `TargetFramework` or package
-  versions (they come from `Directory.Build.props` / `Directory.Packages.props`), add
-  `<PackageVersion>` lines, `dotnet restore`, commit the `packages.lock.json` files. Tests:
-  `<Name>.Tests` projects with xUnit. CI builds the shallowest `*.slnx`/`*.sln` (or set the
-  repository variable `DOTNET_SOLUTION`).
-- **Python:** `requirements.in` (runtime) and `requirements-dev.in` (`-r requirements.in`,
-  then `ruff`, `pytest`), then in the project's `.venv`:
-  ```powershell
-  py -3.13 -m venv .venv
-  .venv\Scripts\python -m pip install uv
-  .venv\Scripts\python scripts/lock_requirements.py
-  .venv\Scripts\python -m pip install --require-hashes -r requirements-dev.lock
-  ```
-  CI runs ruff and pytest once `requirements-dev.lock` (or `requirements.lock`) is committed.
-- **Azure infrastructure:** start from
-  [embergershared/azd-private-starter-template](https://github.com/embergershared/azd-private-starter-template)
-  and deploy through OIDC (see [ci-cd.md](ci-cd.md#deploys)).
+- **.NET or Python:** copy the stack's files back from
+  [embergershared/repo-template](https://github.com/embergershared/repo-template) and follow
+  its `docs/template.md`; CI picks the stack up once its solution or lock file is committed.
+- **Terraform:** a root module per folder under `src/`, following
+  `.github/instructions/terraform.instructions.md`; deploys go through OIDC (see
+  [ci-cd.md](ci-cd.md#deploys)).
 
 ## After the first PR
 
