@@ -41,3 +41,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   existing environments' resources in place (#25).
 - The README is a short table of contents; the upstream background moved to root pages: `AGENT-LANDING-ZONE.md`,
   `IMPLEMENTATIONS.md`, `AGENT-SERVICE.md`, `TERRAFORM-PRACTICES.md` and `SOURCES.md` (#29).
+
+### Removed
+- The template's .NET, Python and database tooling: the CI jobs *.NET build and test*, *Python lint and test* and
+  *Package age gate* and their detection, `scripts/check_package_age.py`, `scripts/db/sqlite_backup.py`, the
+  commented-out NuGet and Docker Dependabot blocks, and their ignore entries. CI checks Terraform and workflows (#39).
