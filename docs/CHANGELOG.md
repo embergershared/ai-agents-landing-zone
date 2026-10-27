@@ -27,6 +27,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   estimate per environment, in `docs/runbook.md` (#12).
 - `search_location`: both AI Search services can run in another region than the landing zone; dev uses Norway East,
   because Sweden Central had no AI Search capacity (#9).
+- Agent tracing: the Foundry project connects to Application Insights through its managed identity (Monitoring Metrics
+  Publisher), and `project_user_principals` get Log Analytics Reader to see the traces. The standard setup also gives
+  the project Storage Account Contributor on the Agent Service storage account. Decision 0001 records why there is no
+  Agent Service Key Vault and why Foundry User stays on the account (#44).
 
 ### Changed
 - Terraform deploy logs and job summaries show no IDs, names or plan details: the IDs and names come from repository
@@ -43,3 +47,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   existing environments' resources in place (#25).
 - The README is a short table of contents; the upstream background moved to root pages: `AGENT-LANDING-ZONE.md`,
   `IMPLEMENTATIONS.md`, `AGENT-SERVICE.md`, `TERRAFORM-PRACTICES.md` and `SOURCES.md` (#29).
+- `docs/` holds only what this repository uses: the database and repo-template pages are removed, and the supply-chain
+  page covers Terraform and GitHub Actions only (#37).
+- Only `README.md` and `LICENSE` stay at the root: the background pages, this changelog and the contributing, conduct,
+  security and support pages moved to `docs/`, and every link to them points there (#41).
+- The state backend is back on `azurerm` 4.81.0, like the landing zone, and Dependabot no longer proposes `azurerm`
+  major versions: the Foundry module needs 4.x (#45).
+
+### Removed
+- The template's .NET, Python and database tooling: the CI jobs *.NET build and test*, *Python lint and test* and
+  *Package age gate* and their detection, `scripts/check_package_age.py`, `scripts/db/sqlite_backup.py`, the
+  commented-out NuGet and Docker Dependabot blocks, and their ignore entries. CI checks Terraform and workflows (#39).

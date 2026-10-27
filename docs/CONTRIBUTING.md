@@ -1,7 +1,7 @@
 # Contributing
 
 Thank you for helping. The full rules, for people and AI coding assistants alike, are in
-[.github/copilot-instructions.md](.github/copilot-instructions.md); this is the short version.
+[.github/copilot-instructions.md](../.github/copilot-instructions.md); this is the short version.
 
 1. **Open an issue first** that says what will be true when it is done, so we agree on it
    before you write code.
@@ -29,6 +29,6 @@ lines; the PR rules check refuses them.
 ## License
 
 By contributing, you agree that your contribution is licensed under the
-[MIT license](LICENSE) of this repository.
+[MIT license](../LICENSE) of this repository.
 
 Please follow the [code of conduct](CODE_OF_CONDUCT.md).
