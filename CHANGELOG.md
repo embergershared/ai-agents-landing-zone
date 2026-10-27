@@ -29,6 +29,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   because Sweden Central had no AI Search capacity (#9).
 
 ### Changed
+- Terraform deploy logs and job summaries show no IDs, names or plan details: the IDs and names come from repository
+  secrets, the plan and the apply show only their counts, and PRs from forks skip the plan (#31).
 - Dev carries the tenant policy's exemption tag, so Storage, Key Vault and Cosmos DB keep their public endpoints, and runs
   the Agent Service's standard setup (#7, #9).
 - The runbook was followed end to end on a fresh environment; its gaps are fixed and the run is recorded (#12).
