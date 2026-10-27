@@ -8,6 +8,7 @@ comment) and bumped by Dependabot after a 7-day cooldown.
 |---|---|---|
 | **CI** (`ci.yml`) | push to `main`, every PR, by hand | Detects the stacks, then runs the jobs below; **`CI result`** sums them up. |
 | **PR rules** (`pr-rules.yml`) | PR opened, edited, updated | Branch name, base branch, linked issue, no AI attribution, commit style (warnings). |
+| **Terraform deploy** (`terraform-deploy.yml`) | PR changing `src/landing-zone/`, by hand from `main` | Plans each environment on a PR; plans or applies one environment by hand. Off until `TF_DEPLOY_ENABLED` is `true`. See [Deploys](#deploys). |
 | **CodeQL** (default setup, no file) | push to `main`, every PR, weekly | Code scanning of the languages GitHub detects; results in **Security → Code scanning**. |
 
 ## CI jobs
@@ -51,21 +52,52 @@ ruleset doesn't change.
 | Variable | Default | Used by |
 |---|---|---|
 | `DOTNET_SOLUTION` | shallowest `*.slnx` / `*.sln` / `*.csproj` | CI |
+| `TF_DEPLOY_ENABLED` | not `true`: off | Terraform deploy: on/off switch |
+| `AZURE_CLIENT_ID` | none | Terraform deploy: client ID of the pipeline identity (`github_deployer` output of `src/state-backend`) |
+| `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | none | Terraform deploy: where it signs in and deploys |
+| `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT` | none | Terraform deploy: the state backend (`backend_config` output) |
+| `PROJECT_USER_PRINCIPALS_<ENV>` | `{}` | Terraform deploy: `project_user_principals` of that environment, as JSON (Entra object IDs stay out of the repository) |
 
 Set one with `gh variable set DOTNET_SOLUTION --body src/App.slnx --repo <owner>/<repo>`.
 
 ## Deploys
 
-There is no deploy workflow yet: phase 5 of the [deployment plan](deployment-plan.md) adds
-one (plan on each PR, apply on `main` behind an environment approval). Write it this way:
-- triggered by a green CI run on `main`, or by hand with a version (rollback);
-- behind an on/off repository variable and a GitHub environment (with required reviewers for
-  anything beyond a sandbox);
-- Azure through OIDC (`id-token: write`, `azure/login`, a federated credential on a user-assigned
-  managed identity or app registration), IDs from repository or environment variables, never a
-  client secret; Terraform reads the same identity from `ARM_USE_OIDC`, `ARM_CLIENT_ID`,
-  `ARM_TENANT_ID` and `ARM_SUBSCRIPTION_ID` (see `.github/instructions/terraform.instructions.md`);
-- a concurrency group that is never cancelled.
+`terraform-deploy.yml` deploys `src/landing-zone/` with the values in
+`src/landing-zone/environments/<env>.tfvars` and the state in the `tfstate-<env>` container.
+
+| Trigger | Job | Identity (OIDC subject) |
+|---|---|---|
+| PR that changes `src/landing-zone/` | **Plan** for each environment, shown in the job summary | `repo:<owner>/<repo>:pull_request` |
+| By hand (**Run workflow**) on `main`, with an environment and `plan` or `apply` | **Plan**, then **apply** of that plan when `apply` was chosen | `repo:<owner>/<repo>:environment:<env>` |
+
+- **Sign-in:** the user-assigned identity `id-<prefix>-github-deployer` from `src/state-backend`
+  (`github_deployer`), with federated credentials for the two subjects above. Terraform reads
+  `ARM_USE_OIDC`, `ARM_CLIENT_ID`, `ARM_TENANT_ID` and `ARM_SUBSCRIPTION_ID`; no client secret
+  exists.
+- **Rights, per environment scope** (the environment's resource group): Contributor, and Role
+  Based Access Control Administrator with a condition that allows only the roles the landing
+  zone grants (`deployer_assignable_role_ids`). The identity can't grant Contributor or Owner.
+  It also has Storage Blob Data Contributor on the state account. It doesn't register resource
+  providers (`ARM_RESOURCE_PROVIDER_REGISTRATIONS=none`): the owner's first deploy does.
+- **Approval:** the GitHub environment `<env>` accepts deployments from `main` only. Required
+  reviewers need a paid GitHub plan for a private repository, so the approval is starting
+  the workflow by hand. On a public repository or a paid plan, add required reviewers to the
+  environment.
+- **Pull requests** sign in with the same identity, so its rights reach code in any PR branch.
+  That is acceptable while only the owner can push. With more contributors, give PR plans a
+  second identity with Reader and state access only.
+- **Never cancelled:** the concurrency group doesn't cancel a run in progress.
+
+### Turn it on
+
+1. The state backend accepts the pipeline (public network access on the state account; see
+   [state-backend.md](state-backend.md)).
+2. The environment's state is in its container. If it was deployed from a workstation with a
+   local state, move it once, from `src/landing-zone` (PowerShell):
+   `terraform init -migrate-state -backend-config=environments/dev.backend.hcl`.
+3. `gh variable set TF_DEPLOY_ENABLED --body true --repo <owner>/<repo>`.
+4. **Actions → Terraform deploy → Run workflow**, environment `dev`, action `plan`. Read the
+   plan, then run it again with `apply`.
 
 ## Private repositories
 
