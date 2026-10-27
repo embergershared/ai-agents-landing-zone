@@ -51,6 +51,8 @@ Set-Location src/landing-zone
 Copy-Item environments/dev.backend.hcl.example environments/dev.backend.hcl
 terraform init -backend-config=environments/dev.backend.hcl
 $env:TF_VAR_project_user_principals = '{"users":{"principal_id":"<entra-group-object-id>","principal_type":"Group"}}'
+# You write the App Configuration settings: list yourself (az ad signed-in-user show --query id -o tsv)
+$env:TF_VAR_app_settings_writer_principals = '{"me":{"principal_id":"<your-entra-object-id>","principal_type":"User"}}'
 terraform plan -var-file=environments/dev.tfvars -out dev.tfplan
 ```
 
