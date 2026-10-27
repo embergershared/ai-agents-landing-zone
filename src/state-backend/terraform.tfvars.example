@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars (gitignored) and adjust. No secrets and no real IDs in the example.
+location                   = "swedencentral"
+name_prefix                = "alz"
+environments               = ["dev"]
+replication_type           = "ZRS"
+soft_delete_retention_days = 30
+
+# Object IDs that read and write state, besides the identity running the bootstrap.
+state_contributor_principal_ids = []
+
+# Empty: all networks, Entra ID still required.
+allowed_ip_ranges = []
+
+tags = {
+  owner = "<team or alias>"
+}
