@@ -151,6 +151,16 @@ resource "azapi_resource" "app_insights_connection" {
       }
     }
   }
+  # The API requires the connection string in the metadata. sensitive_body is write-only and
+  # merge-patched into body, so the value stays out of this resource's state and the plans. No
+  # sensitive_body_version: a versioned path is only sent when its version changes.
+  sensitive_body = {
+    properties = {
+      metadata = {
+        ApplicationInsightsConnectionString = azurerm_application_insights.this.connection_string
+      }
+    }
+  }
   # As in the Foundry module: the provider's embedded schema lags the API (ProjectManagedIdentity).
   schema_validation_enabled = false
 
