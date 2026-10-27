@@ -54,7 +54,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Say why nothing runs
-        run: echo "::notice::TF_DEPLOY_ENABLED is not 'true': no plan or apply (docs/ci-cd.md, Deploys)."
+        run: |
+          echo "::notice::TF_DEPLOY_ENABLED is not 'true', so nothing is planned or applied (docs/ci-cd.md, Deploys)."
 
   plan:
     name: Plan (${{ matrix.environment }})
