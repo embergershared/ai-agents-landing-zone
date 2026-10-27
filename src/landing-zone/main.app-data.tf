@@ -37,10 +37,15 @@ resource "azurerm_storage_account" "app" {
   min_tls_version                 = "TLS1_2"
   public_network_access_enabled   = true
 
-  network_rules {
-    default_action = length(var.allowed_ip_ranges) == 0 ? "Allow" : "Deny"
-    ip_rules       = var.allowed_ip_ranges
-    bypass         = ["AzureServices"]
+  # Only with allowed_ip_ranges: an allow-all rule set reads back as absent (a change on every
+  # plan). No block means all networks.
+  dynamic "network_rules" {
+    for_each = length(var.allowed_ip_ranges) == 0 ? [] : [var.allowed_ip_ranges]
+    content {
+      default_action = "Deny"
+      ip_rules       = network_rules.value
+      bypass         = ["AzureServices"]
+    }
   }
 
   blob_properties {

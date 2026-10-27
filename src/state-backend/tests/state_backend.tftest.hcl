@@ -84,7 +84,7 @@ run "defaults" {
   }
 
   assert {
-    condition     = azurerm_storage_account.state.network_rules[0].default_action == "Allow"
+    condition     = length(azurerm_storage_account.state.network_rules) == 0
     error_message = "With no allowed_ip_ranges, the account is not open to all networks."
   }
 

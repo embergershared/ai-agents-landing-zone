@@ -163,6 +163,11 @@ run "platform_and_data_on" {
   }
 
   assert {
+    condition     = length(azurerm_storage_account.app[0].network_rules) == 0
+    error_message = "With no allowed_ip_ranges, the applications' Storage has network rules."
+  }
+
+  assert {
     condition     = length(azurerm_role_assignment.app_search_index) == 1 && length(azurerm_role_assignment.app_blob_data) == 1
     error_message = "The applications' identity has no access to the application data."
   }
