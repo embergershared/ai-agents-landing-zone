@@ -83,8 +83,8 @@ How the groups relate:
 - **Group 3 has its own AI Search and Storage.** Group 2's belong to the Agent Service of
   this Foundry instance only (upstream warns against sharing them), so the application's
   indexes and documents never go there.
-- **One resource group and one Terraform state** hold all three groups by default; see
-  [D8](#4-decisions-to-confirm) for splitting them.
+- **One resource group and one Terraform state** per environment hold all three groups
+  (decided, see [D8](#4-decisions-to-confirm)).
 
 All resources send diagnostics to group 1's Log Analytics workspace, and all take the same
 tags.
@@ -171,7 +171,7 @@ needs 2; 6 comes last.
 | D5 | Who deploys, and with which rights? | A pipeline identity with Contributor and Role Based Access Administrator (limited to the roles the landing zone grants) on the target resource group or subscription. Contributor alone can't create the role assignments. |
 | D6 | Are IP allow lists wanted on the public endpoints from day one? | Start with them empty in dev; decide per service for prod. |
 | D7 | Naming convention | AVM naming with a `name_prefix` and short random suffix, like the upstream modules; or the customer's own convention if there is one. |
-| D8 | Should the three groups live in separate resource groups, or separate Terraform states? | One resource group and one state to start: the Foundry module creates group 2 in the same resource group as the Foundry account, and one state keeps the outputs between groups simple. If the workload must be owned or retired apart, move group 3 to its own resource group first; group 2 can only move out by creating it outside the module and passing it in through `existing_agent_service_dependencies`. |
+| D8 | Should the three groups live in separate resource groups, or separate Terraform states? | **Decided (2026-10-27): one resource group and one Terraform state for all three groups.** Why: the Foundry module creates group 2 in the same resource group as the Foundry account, and one state keeps the outputs between groups simple. If the workload must later be owned or retired apart, move group 3 to its own resource group first; group 2 can only move out by creating it outside the module and passing it in through `existing_agent_service_dependencies`. |
 
 ## 5. Risks
 
