@@ -6,9 +6,11 @@ locals {
   deployer = var.github_deployer != null
 
   # GitHub's OIDC subjects: one per environment (apply jobs) and one for pull requests (plans).
+  # A repository with immutable subjects sends its owner and repository IDs in the prefix.
+  deployer_subject_prefix = local.deployer ? coalesce(var.github_deployer.subject_prefix, "repo:${var.github_deployer.repository}") : null
   deployer_subjects = local.deployer ? merge(
-    { for env in keys(var.github_deployer.environments) : "env-${env}" => "repo:${var.github_deployer.repository}:environment:${env}" },
-    { "pull-request" = "repo:${var.github_deployer.repository}:pull_request" }
+    { for env in keys(var.github_deployer.environments) : "env-${env}" => "${local.deployer_subject_prefix}:environment:${env}" },
+    { "pull-request" = "${local.deployer_subject_prefix}:pull_request" }
   ) : {}
 
   # The RBAC Administrator may only write or delete assignments of these roles.
@@ -36,11 +38,11 @@ resource "azurerm_user_assigned_identity" "deployer" {
 resource "azurerm_federated_identity_credential" "deployer" {
   for_each = local.deployer_subjects
 
-  name      = each.key
-  parent_id = azurerm_user_assigned_identity.deployer[0].id
-  issuer    = "https://token.actions.githubusercontent.com"
-  audience  = ["api://AzureADTokenExchange"]
-  subject   = each.value
+  name                      = each.key
+  user_assigned_identity_id = azurerm_user_assigned_identity.deployer[0].id
+  issuer                    = "https://token.actions.githubusercontent.com"
+  audience                  = ["api://AzureADTokenExchange"]
+  subject                   = each.value
 }
 
 resource "azurerm_role_assignment" "deployer_contributor" {
