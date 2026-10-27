@@ -17,6 +17,10 @@ model_deployments = {
 # Standard agent setup: our own Cosmos DB, AI Search and Storage.
 deploy_agent_service_dependencies = true
 
+# AI Search in Norway East: swedencentral had no AI Search capacity (Basic or Standard) on
+# 2026-10-27; norwayeast is the closest region that had (owner's choice).
+search_location = "norwayeast"
+
 deploy_application_platform = true
 deploy_application_data     = true
 
