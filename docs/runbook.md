@@ -27,7 +27,10 @@ az account show --query "{subscription:name, tenant:tenantId, user:user.name}" -
 
 ## 2. Deploy
 
-### 2.1 State backend (once per subscription)
+### 2.1 State backend (once per subscription, again for each new environment)
+
+Each environment needs its state container: list every environment in `environments` in the
+bootstrap's `terraform.tfvars`. To add one later, add its name there and run these steps again.
 
 ```powershell
 Set-Location src/state-backend
@@ -44,24 +47,32 @@ Back up the folder that holds the bootstrap state (`$HOME/.terraform-state/...`)
 
 ### 2.2 The environment
 
+The commands use `$envName`; set it to the environment (`dev`, `test`, ...).
+
 ```powershell
 Set-Location src/landing-zone
-# environments/<env>.tfvars holds the committed values; create one for a new environment.
-# <env>.backend.hcl (gitignored): copy environments/dev.backend.hcl.example and fill it from backend_config.
-Copy-Item environments/dev.backend.hcl.example environments/dev.backend.hcl
-terraform init -backend-config=environments/dev.backend.hcl
+$envName = 'dev'
+# environments/<env>.tfvars holds the committed values. For a new environment, copy dev.tfvars,
+# set environment = "<env>", and review region, search_location, switches and tags.
+# <env>.backend.hcl (gitignored): copy the example, fill it from backend_config, and set
+# container_name = "tfstate-<env>".
+Copy-Item environments/dev.backend.hcl.example "environments/$envName.backend.hcl"
+# -reconfigure: needed when this folder was initialized for another environment before
+terraform init -reconfigure -backend-config="environments/$envName.backend.hcl"
 $env:TF_VAR_project_user_principals = '{"users":{"principal_id":"<entra-group-object-id>","principal_type":"Group"}}'
 # You write the App Configuration settings: list yourself (az ad signed-in-user show --query id -o tsv)
 $env:TF_VAR_app_settings_writer_principals = '{"me":{"principal_id":"<your-entra-object-id>","principal_type":"User"}}'
-terraform plan -var-file=environments/dev.tfvars -out dev.tfplan
+terraform plan -var-file="environments/$envName.tfvars" -out "$envName.tfplan"
 ```
 
 Read the plan before you apply it. A first deploy only adds resources. Any "destroy" or "must be
 replaced" line needs a reason. Then:
 ```powershell
-terraform apply dev.tfplan
-Remove-Item dev.tfplan
+terraform apply "$envName.tfplan"
+Remove-Item "$envName.tfplan"
 ```
+
+A full environment takes about 15 minutes (the Foundry module waits 5 minutes for the account).
 
 ### 2.3 Pipeline (optional)
 
@@ -105,14 +116,22 @@ Common changes:
 
 1. Export what must be kept: agent threads (Cosmos DB), files (Storage), App Configuration
    settings, logs.
-2. Destroy, from `src/landing-zone` with the environment's backend:
+2. Delete what Azure created by itself in the resource group. Terraform won't delete a resource
+   group that still holds resources it doesn't manage (`prevent_deletion_if_contains_resources`).
+   Application Insights always adds a "Failure Anomalies" smart detector alert rule:
+   ```powershell
+   az resource list -g <rg> --resource-type microsoft.alertsmanagement/smartDetectorAlertRules --query "[].id" -o tsv |
+     ForEach-Object { az resource delete --ids $_ }
+   ```
+   List what else is there (`az resource list -g <rg> -o table`); anything not in the destroy
+   plan needs a decision first.
+3. Destroy, from `src/landing-zone` with the environment's backend (about 40 minutes):
    ```powershell
    terraform plan -destroy -var-file=environments/<env>.tfvars -out destroy.tfplan
+   # Check the plan names only this environment's resource group
    terraform apply destroy.tfplan
    ```
-   The resource group isn't deleted while it still holds resources Terraform doesn't manage
-   (`prevent_deletion_if_contains_resources`). Remove those first, or find out what they are.
-3. Purge soft-deleted resources that would block a redeploy with the same name, or keep
+4. Purge soft-deleted resources that would block a redeploy with the same name, or keep
    charging:
    ```powershell
    # Foundry (AI Services) account: soft-deleted for 48 hours
@@ -124,7 +143,7 @@ Common changes:
    ```
    Key Vault has purge protection: it stays soft-deleted for 90 days and can't be purged. Its
    name has a random suffix, so a redeploy doesn't collide with it.
-4. Remove the environment from the pipeline: its `github_deployer.environments` entry (apply the
+5. Remove the environment from the pipeline: its `github_deployer.environments` entry (apply the
    bootstrap again), its `PROJECT_USER_PRINCIPALS_<ENV>` variable, its GitHub environment, and
    its state container (from `environments` in the bootstrap).
 
@@ -166,3 +185,18 @@ A production environment with 2 or more AI Search replicas (for the read SLA), S
 App Configuration replicas, or provisioned Cosmos DB throughput (at least 3000 RU/s) costs
 more. Price it with the [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/)
 before choosing those values.
+
+## 8. Last full run
+
+On 2026-10-27, a fresh environment (`rbook`) was deployed, verified and retired by following
+this runbook only, from a fresh clone of `main`, in the dev subscription:
+
+| Step | Seen |
+|---|---|
+| 2.1 | `environments = ["dev", "rbook"]`: 1 container added. |
+| 2.2 | Plan: 57 to add, 0 to change, 0 to destroy. Apply: 57 added in 16 minutes. |
+| 3. Verify | Model call answered ("landing zone ok"), and an `api-key` call got 401. An agent run completed ("agents work"), and the Agent Service created its database and containers in our Cosmos DB. A Container Apps job as the applications' identity listed every `landingzone:` key. `to-log-analytics` is on Foundry, Key Vault, App Configuration, Container Apps, Cosmos DB and both AI Search services. Plan: only the known Foundry diagnostics diff. |
+| 5. Retire | The destroy (57 resources, 38 minutes) stopped at the resource group because of the "Failure Anomalies" alert rule: deleted, destroy finished. Foundry account and App Configuration store purged; Key Vault kept by purge protection. Container removed from the bootstrap (1 destroyed). Dev unchanged. |
+
+The gaps it found are fixed above: environment-specific commands, `-reconfigure`, a new
+environment's state container, and the alert rule that blocks the resource group's deletion.
