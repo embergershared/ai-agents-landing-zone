@@ -1,4 +1,4 @@
-# ai-agents-landing-zone
+# Azure Agent Landing Zone wrapper
 
 Repo wrapper to deploy Azure AI Agents Landing Zone
 
