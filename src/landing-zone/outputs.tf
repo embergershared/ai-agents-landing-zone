@@ -38,3 +38,17 @@ output "application_insights_connection_string" {
   value       = azurerm_application_insights.this.connection_string
   sensitive   = true
 }
+
+output "agent_service_setup" {
+  description = "Agent Service setup: standard (our Cosmos DB, AI Search and Storage, new or existing) or basic."
+  value       = local.agent_service_enabled ? (local.agent_deps_existing ? "standard (existing dependencies)" : "standard") : "basic"
+}
+
+output "agent_service_dependencies" {
+  description = "Cosmos DB, AI Search and Storage of the Agent Service, when the switch is on."
+  value = local.agent_service_enabled ? {
+    cosmos_db_name       = local.agent_deps_existing ? provider::azurerm::parse_resource_id(var.existing_agent_service_dependencies.cosmos_db_resource_id).resource_name : local.names.agent_cosmos
+    ai_search_name       = local.agent_deps_existing ? provider::azurerm::parse_resource_id(var.existing_agent_service_dependencies.ai_search_resource_id).resource_name : local.names.agent_search
+    storage_account_name = local.agent_deps_existing ? provider::azurerm::parse_resource_id(var.existing_agent_service_dependencies.storage_account_resource_id).resource_name : local.names.agent_storage
+  } : null
+}
