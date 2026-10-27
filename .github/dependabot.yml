@@ -1,7 +1,7 @@
 # Dependabot proposes updates no sooner than 7 days after a release (cooldown), like the
 # package age gate. Its PRs are exempt from the PR rules (no issue, dependabot/ branch).
-# Uncomment the ecosystems the repository uses. Python dependencies are refreshed with
-# scripts/lock_requirements.py instead (hash-locked, age-checked).
+# Uncomment the ecosystems the repository uses. Terraform: provider and module versions in
+# every directory under src/, and the .terraform.lock.hcl files with them.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -14,6 +14,17 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+
+  - package-ecosystem: terraform
+    directories: ["/src/*"]
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      terraform-minor-and-patch:
+        update-types: [minor, patch]
 
   # - package-ecosystem: nuget
   #   directory: /
