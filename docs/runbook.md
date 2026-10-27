@@ -77,7 +77,8 @@ A full environment takes about 15 minutes (the Foundry module waits 5 minutes fo
 ### 2.3 Pipeline (optional)
 
 Set `github_deployer` in the bootstrap's `terraform.tfvars` and apply it again (2.1), then set the
-repository variables and turn the workflow on ([ci-cd.md](ci-cd.md#turn-it-on)).
+repository secrets ([ci-cd.md](ci-cd.md#repository-secrets)) and turn the workflow on
+([ci-cd.md](ci-cd.md#turn-it-on)).
 
 ## 3. Verify
 
@@ -144,8 +145,8 @@ Common changes:
    Key Vault has purge protection: it stays soft-deleted for 90 days and can't be purged. Its
    name has a random suffix, so a redeploy doesn't collide with it.
 5. Remove the environment from the pipeline: its `github_deployer.environments` entry (apply the
-   bootstrap again), its `PROJECT_USER_PRINCIPALS_<ENV>` variable, its GitHub environment, and
-   its state container (from `environments` in the bootstrap).
+   bootstrap again), its `PROJECT_USER_PRINCIPALS_<ENV>` and `APP_SETTINGS_WRITERS_<ENV>`
+   secrets, its GitHub environment, and its state container (from `environments` in the bootstrap).
 
 Retire the state backend only after every environment is gone ([state-backend.md](state-backend.md#retire)).
 

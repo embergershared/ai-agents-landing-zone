@@ -42,7 +42,7 @@ It is infrastructure only; the Agent Application is not deployed by Terraform.
 | [docs/deployment-plan.md](docs/deployment-plan.md) | Design, the three groups, phases, decisions and risks |
 | [docs/landing-zone.md](docs/landing-zone.md) | The landing zone root module: resources, inputs, settings, checks |
 | [docs/state-backend.md](docs/state-backend.md) | The Terraform state backend and its bootstrap |
-| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD workflows, repository variables, security settings |
+| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD workflows, repository variables and secrets, security settings |
 
 **Contribute**
 

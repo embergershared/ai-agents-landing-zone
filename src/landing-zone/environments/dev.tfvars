@@ -1,6 +1,6 @@
 # dev environment (decision D4: one state and one tfvars per environment). No secrets and no
 # real IDs here: the Entra principals come from the PROJECT_USER_PRINCIPALS_DEV repository
-# variable, the subscription from AZURE_SUBSCRIPTION_ID (docs/ci-cd.md).
+# secret, the subscription from AZURE_SUBSCRIPTION_ID (docs/ci-cd.md).
 location    = "swedencentral"
 name_prefix = "alz"
 environment = "dev"

@@ -49,13 +49,24 @@ ruleset doesn't change.
 | Variable | Default | Used by |
 |---|---|---|
 | `TF_DEPLOY_ENABLED` | not `true`: off | Terraform deploy: on/off switch |
+
+Set one with `gh variable set <NAME> --body <value> --repo <owner>/<repo>`.
+
+## Repository secrets
+
+The deploy's IDs and names aren't secret, but the logs of a public repository are: GitHub masks
+a secret's value in every log line, and doesn't mask a variable's.
+
+| Secret | Default | Used by |
+|---|---|---|
 | `AZURE_CLIENT_ID` | none | Terraform deploy: client ID of the pipeline identity (`github_deployer` output of `src/state-backend`) |
 | `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | none | Terraform deploy: where it signs in and deploys |
 | `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT` | none | Terraform deploy: the state backend (`backend_config` output) |
 | `PROJECT_USER_PRINCIPALS_<ENV>` | `{}` | Terraform deploy: `project_user_principals` of that environment, as JSON (Entra object IDs stay out of the repository) |
 | `APP_SETTINGS_WRITERS_<ENV>` | `{}` | Terraform deploy: `app_settings_writer_principals` of that environment, as JSON: the people who also run Terraform from a workstation |
 
-Set one with `gh variable set <NAME> --body <value> --repo <owner>/<repo>`.
+Set one without putting the value on the command line (PowerShell):
+`Read-Host -MaskInput | gh secret set AZURE_SUBSCRIPTION_ID --repo <owner>/<repo>`.
 
 ## Deploys
 
@@ -64,7 +75,7 @@ Set one with `gh variable set <NAME> --body <value> --repo <owner>/<repo>`.
 
 | Trigger | Job | Identity (OIDC subject) |
 |---|---|---|
-| PR that changes `src/landing-zone/` | **Plan** for each environment, shown in the job summary | `repo:<owner>/<repo>:pull_request` |
+| PR from this repository (not a fork) that changes `src/landing-zone/` | **Plan** for each environment, its counts in the job summary | `repo:<owner>/<repo>:pull_request` |
 | By hand (**Run workflow**) on `main`, with an environment and `plan` or `apply` | **Plan**, then **apply** of that plan when `apply` was chosen | `repo:<owner>/<repo>:environment:<env>` |
 
 - **Sign-in:** the user-assigned identity `id-<prefix>-github-deployer` from `src/state-backend`
@@ -88,6 +99,11 @@ Set one with `gh variable set <NAME> --body <value> --repo <owner>/<repo>`.
 - **Pull requests** sign in with the same identity, so its rights reach code in any PR branch.
   That is acceptable while only the owner can push. With more contributors, give PR plans a
   second identity with Reader and state access only.
+- **Public logs:** the IDs and names come from secrets, and each principal ID inside the
+  `<ENV>` JSON is masked too. The plan and the apply write their output to files on the runner;
+  the log and the job summary show only the counts to add, change and destroy, and Terraform's
+  errors. Read the full plan from a workstation (runbook, deploy) or in the Azure portal.
+- **Forks:** a PR from a fork gets no secrets and no OIDC token, so its plan is skipped.
 - **Never cancelled:** the concurrency group doesn't cancel a run in progress.
 
 ### Turn it on
@@ -98,8 +114,9 @@ Set one with `gh variable set <NAME> --body <value> --repo <owner>/<repo>`.
    local state, move it once, from `src/landing-zone` (PowerShell):
    `terraform init -migrate-state -backend-config=environments/dev.backend.hcl`.
 3. `gh variable set TF_DEPLOY_ENABLED --body true --repo <owner>/<repo>`.
-4. **Actions → Terraform deploy → Run workflow**, environment `dev`, action `plan`. Read the
-   plan, then run it again with `apply`.
+4. **Actions → Terraform deploy → Run workflow**, environment `dev`, action `plan`. Check the
+   counts (and the full plan from a workstation when anything is changed or destroyed), then run
+   it again with `apply`.
 
 ## Private repositories
 
