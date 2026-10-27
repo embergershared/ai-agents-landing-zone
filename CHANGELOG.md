@@ -41,3 +41,5 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   existing environments' resources in place (#25).
 - The README is a short table of contents; the upstream background moved to root pages: `AGENT-LANDING-ZONE.md`,
   `IMPLEMENTATIONS.md`, `AGENT-SERVICE.md`, `TERRAFORM-PRACTICES.md` and `SOURCES.md` (#29).
+- `docs/` holds only what this repository uses: the database and repo-template pages are removed, and the supply-chain
+  page covers Terraform and GitHub Actions only (#37).
