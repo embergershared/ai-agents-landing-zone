@@ -8,3 +8,4 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Repository created from [embergershared/repo-template](https://github.com/embergershared/repo-template).
+- README explains the Agent Landing Zone, its Bicep and Terraform implementations and their limits (#3).
