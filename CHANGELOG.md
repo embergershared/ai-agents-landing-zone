@@ -13,6 +13,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   for the Foundry Agent Service dependencies (#3).
 - Terraform tooling: ignore rules for state, `*.tfvars` and `.terraform/`, a CI job that runs `terraform fmt`,
   `validate` and `test` in each root module, Dependabot updates and agent rules for Terraform (#6).
+- Terraform state backend: `src/state-backend/` creates an Entra ID-only storage account with versioning, soft delete
+  and one state container per environment; `docs/state-backend.md` explains the bootstrap and the backend settings (#7).
 
 ### Changed
 - The agent rules and `docs/` describe this Terraform repository and no longer refer to the removed .NET and Python
