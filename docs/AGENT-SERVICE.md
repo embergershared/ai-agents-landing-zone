@@ -2,7 +2,7 @@
 
 Facts on this page were read on **2026-10-27** from the sources in [SOURCES.md](SOURCES.md). The
 upstream projects move fast; check the versions there before relying on a detail.
-Back to the [README](README.md).
+Back to the [README](../README.md).
 
 [Microsoft Learn](https://learn.microsoft.com/azure/foundry/agents/environment-setup) describes
 three setups:
@@ -33,6 +33,10 @@ Facts to plan around:
 - **Permissions:** creating a standard setup needs role-assignment rights
   (`Microsoft.Authorization/roleAssignments/write`, e.g. *Role Based Access Administrator*),
   besides the rights to create the resources. Contributor alone is not enough.
+- **This repository** follows Microsoft's
+  [standard agent setup](https://learn.microsoft.com/azure/foundry/agents/concepts/standard-agent-setup)
+  checklist, except for the Agent Service Key Vault and the scope of Foundry User; see
+  [decision 0001](decisions/0001-standard-agent-setup-gaps.md).
 - **Bicep switch:** `DEPLOY_AAF_AGENT_SVC` (default `true`). Off, the Foundry account stays
   but the second Search, Storage and Cosmos DB are not created. Upstream notes the default
   hosted-agent path needs it on. Existing dependencies can be reused with

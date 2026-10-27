@@ -105,5 +105,8 @@ variable "deployer_assignable_role_ids" {
     "ba92f5b4-2d11-453d-a403-e96b0029c9fe", # Storage Blob Data Contributor
     "b7e6dc6d-f1e8-4753-8033-0f276bb0955b", # Storage Blob Data Owner
     "230815da-be43-4aae-9cb4-875f7bd000aa", # Cosmos DB Operator
+    "17d1049b-9a84-46fb-8f53-869881c3d3ab", # Storage Account Contributor
+    "3913510d-42f4-4e42-8a64-420c390055eb", # Monitoring Metrics Publisher
+    "73c42c96-874c-492b-b04d-ab87d138a893", # Log Analytics Reader
   ]
 }

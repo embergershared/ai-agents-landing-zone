@@ -89,6 +89,17 @@ resource "azurerm_search_service" "agent" {
   }
 }
 
+# The Foundry module gives the project Storage Blob Data Contributor and Owner; the standard
+# setup also asks for Storage Account Contributor on the account, new or existing.
+resource "azurerm_role_assignment" "project_storage_account_contributor" {
+  count = local.agent_service_enabled ? 1 : 0
+
+  scope              = local.agent_deps_existing ? var.existing_agent_service_dependencies.storage_account_resource_id : module.foundry.storage_account_id[local.agent_deps_key]
+  role_definition_id = local.role_ids.storage_account_contributor
+  principal_id       = local.foundry_project_principal_id
+  principal_type     = "ServicePrincipal"
+}
+
 resource "azurerm_monitor_diagnostic_setting" "agent_search" {
   count = local.agent_deps_create ? 1 : 0
 

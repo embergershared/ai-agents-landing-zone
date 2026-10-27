@@ -1,7 +1,7 @@
 # Dependabot proposes updates no sooner than 7 days after a release (cooldown), like the
 # package age gate. Its PRs are exempt from the PR rules (no issue, dependabot/ branch).
-# Uncomment the ecosystems the repository uses. Terraform: provider and module versions in
-# every directory under src/, and the .terraform.lock.hcl files with them.
+# Terraform: provider and module versions in every directory under src/, and the
+# .terraform.lock.hcl files with them.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -22,25 +22,12 @@ updates:
       day: monday
     cooldown:
       default-days: 7
+    # azurerm stays on 4.x in every root module: the Foundry module (Azure/avm-ptn-aiml-ai-foundry)
+    # needs ~> 4.38. Moving to 5.x is done by hand, through its own issue (docs/supply-chain.md).
+    ignore:
+      - dependency-name: hashicorp/azurerm
+        update-types: [version-update:semver-major]
     groups:
       terraform-minor-and-patch:
         update-types: [minor, patch]
 
-  # - package-ecosystem: nuget
-  #   directory: /
-  #   schedule:
-  #     interval: weekly
-  #     day: monday
-  #   cooldown:
-  #     default-days: 7
-  #   groups:
-  #     nuget-minor-and-patch:
-  #       update-types: [minor, patch]
-
-  # - package-ecosystem: docker
-  #   directory: /
-  #   schedule:
-  #     interval: weekly
-  #     day: monday
-  #   cooldown:
-  #     default-days: 7

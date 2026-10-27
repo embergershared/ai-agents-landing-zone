@@ -68,7 +68,7 @@ All work goes through it: features, fixes, optimizations, docs, refactors, and c
 ## Commits (always)
 
 - **Stage files one by one.** Never `git add .` or `git add -A`; don't stage tool noise
-  (`*.csproj.lscache`, local databases, backups) unless asked.
+  (`.terraform/`, `*.tfplan`, backups) unless asked.
 - **One commit per concern,** in the order the work was asked for.
 - **Message style:**
   - Subject: one plain-English sentence ending with a period, saying what is now true for the
@@ -91,10 +91,9 @@ All work goes through it: features, fixes, optimizations, docs, refactors, and c
 - **Don't read live `.env`, `.env.*`, `config.env`, or other secret files.** Learn the variable
   names from `.env.example` / `.env.sample` / `.env.template`.
 - **Approved package sources only.** Terraform providers and modules from the Terraform
-  registry, pinned and locked; Python tooling only via
-  `--index-url https://packagefeedproxy.microsoft.io/pypi/simple/`. Never add a second source as
-  a fallback: fail closed and report when a package or version can't be verified. Where that
-  feed can't be reached, a contributor switches the source instead (see
+  registry, pinned and locked. Never add a second source as a fallback: fail closed and report
+  when a package or version can't be verified. Where the registry can't be reached, a
+  contributor switches the source instead (see
   `docs/supply-chain.md`, "Turn the approved feed off"); the age gate still applies.
 - **Package age gate: 7 days.** Any new Terraform, provider or module version, package version,
   GitHub Action release, or base image must have been published at least 7 days ago. Provider
@@ -128,7 +127,7 @@ All work goes through it: features, fixes, optimizations, docs, refactors, and c
   one place.
 - **Logging:** structured logging, never `print`/`console.log` for diagnostics. Standard levels
   only (DEBUG/INFO/WARNING/ERROR); never a custom level like VERBOSE.
-- **Docs:** update the matching docs (README, `docs/`, runbooks), `CHANGELOG.md`, and this file
+- **Docs:** update the matching docs (README, `docs/`, runbooks), `docs/CHANGELOG.md`, and this file
   in the same change when behavior, config, or a convention changes.
 - **Microsoft and Azure docs:** look them up with the Microsoft Learn MCP tools first; say so
   when falling back to another source.
@@ -146,19 +145,19 @@ All work goes through it: features, fixes, optimizations, docs, refactors, and c
   suite once, lint and type checks, the in-app check, and the database checks below when the
   schema changed. New behavior has tests. The PR body says what was run and what was seen,
   and names anything not verified.
-- **Use the project's own environment** (`.venv`, the repo's scripts), never the system Python
-  or global tools.
+- **Use the project's own environment** (the Terraform version CI pins, the repo's workflows),
+  never other global tools.
 
 ## Database schema changes (always)
 
 Every change to a database's schema or stored data shape (table, column, index, constraint,
 key, or a data migration) gets a migration path, a backup before it runs, and a way back.
-`docs/database.md` has the procedure and `scripts/db/` the scripts.
+This repository has no database: the rule applies to any database a later change adds.
 - **Scripted, never by hand:** through the project's own mechanism (EF Core migrations, Alembic,
   a versioned SQL script). Never alter a database by hand.
 - **Backup first** of any database holding real data (local dev data included), named with a
-  timestamp and the reason: `scripts/db/sqlite_backup.py backup <db> --reason card-history`
-  writes `<name>_Backup_<yyyyMMdd_HHmmss>_before-card-history.db` (WAL-safe) and checks it.
+  timestamp and the reason (`<name>_Backup_<yyyyMMdd_HHmmss>_before-card-history`), and
+  checked: it opens and its row counts match.
 - **Way back:** a `Down` migration or rollback script, plus restore-from-backup steps, tested
   on a copy.
 - **Additive first.** Split a destructive change (drop, rename, type narrowing) into steps: add
@@ -191,8 +190,9 @@ key, or a data migration) gets a migration path, a backup before it runs, and a 
 ## This project
 
 Repo wrapper to deploy Azure AI Agents Landing Zone. The [README](../README.md) is a table of
-contents; the root pages (`AGENT-LANDING-ZONE.md`, `IMPLEMENTATIONS.md`, `AGENT-SERVICE.md`,
-`TERRAFORM-PRACTICES.md`, `SOURCES.md`) explain the upstream landing zone;
+contents and, with `LICENSE`, the only file at the root: every other page is in `docs/`. The
+background pages (`docs/AGENT-LANDING-ZONE.md`, `docs/IMPLEMENTATIONS.md`, `docs/AGENT-SERVICE.md`,
+`docs/TERRAFORM-PRACTICES.md`, `docs/SOURCES.md`) explain the upstream landing zone;
 [docs/deployment-plan.md](../docs/deployment-plan.md) has the design, the phases and the
 decisions still open.
 

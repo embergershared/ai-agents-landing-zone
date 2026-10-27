@@ -12,6 +12,9 @@ applyTo: "**/*.tf,**/*.tftest.hcl,**/*.tfvars.example,**/.terraform.lock.hcl"
   (`~> 4.38`); each registry module with an exact `version` (`"0.12.0"`). Only releases at
   least 7 days old (Terraform, providers and modules alike); Dependabot (`terraform`, 7-day
   cooldown) proposes the bumps.
+- **azurerm stays on 4.x** in every root module: the Foundry module needs `~> 4.38`, and
+  Dependabot ignores azurerm major versions. Never take a 5.x bump in one root module alone;
+  the move is its own issue (`docs/supply-chain.md`, "Major versions held back").
 - **Commit the lock file.** `.terraform.lock.hcl` is committed next to each root module, with
   hashes for every platform that runs it:
   `terraform providers lock -platform=linux_amd64 -platform=windows_amd64 -platform=darwin_arm64`.
