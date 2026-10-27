@@ -93,6 +93,10 @@ Common changes:
 - **The Agent Service setup:** `deploy_agent_service_dependencies`. Turning it off destroys the
   Agent Service's Cosmos DB, AI Search and Storage, and the agents' threads and files in them.
   Export what you need first.
+- **The workload:** `deploy_workload`. Turning it off destroys App Configuration, the Container
+  Registry and its images, the Container Apps environment, the applications' identity, Key Vault
+  (soft-deleted for 90 days) and the applications' AI Search and Storage with their data.
+  Export what you need first.
 - **IP allow lists:** `allowed_ip_ranges` applies to every service at once.
 - **Provider, module or Terraform versions:** Dependabot opens the PRs (7-day cooldown).
   Terraform in CI is `TERRAFORM_VERSION` in both workflows ([supply-chain.md](supply-chain.md)).

@@ -21,8 +21,9 @@ deploy_agent_service_dependencies = true
 # 2026-10-27; norwayeast is the closest region that had (owner's choice).
 search_location = "norwayeast"
 
-deploy_application_platform = true
-deploy_application_data     = true
+# Workload group: App Configuration, Container Registry, Container Apps, Key Vault, and the
+# applications' own AI Search and Storage.
+deploy_workload = true
 
 allowed_ip_ranges = []
 

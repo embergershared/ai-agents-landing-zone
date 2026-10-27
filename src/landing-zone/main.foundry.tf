@@ -1,3 +1,33 @@
+# Group 1, Foundry essentials (always deployed): the resource group, the monitoring every
+# resource sends its diagnostics to, and the Foundry account, project and model deployments.
+data "azurerm_client_config" "current" {}
+
+resource "azurerm_resource_group" "this" {
+  name     = local.names.resource_group
+  location = var.location
+  tags     = local.tags
+}
+
+resource "azurerm_log_analytics_workspace" "this" {
+  name                         = local.names.log_analytics
+  resource_group_name          = azurerm_resource_group.this.name
+  location                     = azurerm_resource_group.this.location
+  sku                          = "PerGB2018"
+  retention_in_days            = var.log_analytics_retention_days
+  local_authentication_enabled = false
+  tags                         = local.tags
+}
+
+resource "azurerm_application_insights" "this" {
+  name                         = local.names.app_insights
+  resource_group_name          = azurerm_resource_group.this.name
+  location                     = azurerm_resource_group.this.location
+  workspace_id                 = azurerm_log_analytics_workspace.this.id
+  application_type             = "web"
+  local_authentication_enabled = false
+  tags                         = local.tags
+}
+
 # Foundry account, project and model deployments on public endpoints (no private endpoints),
 # with key authentication off: callers use Entra ID tokens. The inputs are built as locals so
 # that terraform test can check them without the module (its mocks lack ephemeral resources).
