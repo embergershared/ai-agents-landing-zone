@@ -72,9 +72,10 @@ A call with an `api-key` header gets 401: key authentication is off.
 
 ## Settings in App Configuration
 
-With the platform on, Terraform writes these keys, labeled with the environment (`dev`). The
-identity running Terraform gets App Configuration Data Owner to write them through the data
-plane.
+With the platform on, Terraform writes these keys, labeled with the environment (`dev`),
+through the data plane. Whoever runs Terraform needs App Configuration Data Owner, even for a
+plan: the pipeline identity gets it from `src/state-backend`, and people who run Terraform from
+a workstation are listed in `app_settings_writer_principals`.
 
 | Key | Value |
 |---|---|
