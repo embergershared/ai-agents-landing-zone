@@ -41,5 +41,8 @@ locals {
     acr_pull                      = "7f951dda-4ed3-4680-a7ca-43fe172d538d"
     search_index_data_contributor = "8ebe5a00-799e-43f5-93ac-243d3dce84a7"
     storage_blob_data_contributor = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+    storage_account_contributor   = "17d1049b-9a84-46fb-8f53-869881c3d3ab"
+    monitoring_metrics_publisher  = "3913510d-42f4-4e42-8a64-420c390055eb"
+    log_analytics_reader          = "73c42c96-874c-492b-b04d-ab87d138a893"
   }
 }

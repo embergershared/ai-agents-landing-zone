@@ -92,7 +92,22 @@ override_module {
   outputs = {
     ai_foundry_name = "aif-alz-dev-ab12"
     ai_foundry_id   = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.CognitiveServices/accounts/aif-alz-dev-ab12"
+    ai_foundry_project_id = {
+      main = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.CognitiveServices/accounts/aif-alz-dev-ab12/projects/proj-alz-dev"
+    }
+    ai_foundry_project_system_identity_principal_id = {
+      main = "00000000-0000-0000-0000-00000000000b"
+    }
+    storage_account_id = {
+      agent = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.Storage/storageAccounts/stalzdevagentab12"
+    }
   }
+}
+
+# The project's tracing connection: azapi has no mock (the module's ephemeral resources need it).
+override_resource {
+  target          = azapi_resource.app_insights_connection
+  override_during = plan
 }
 
 # A local terraform.tfvars is loaded by terraform test too: pin the inputs the runs depend on.

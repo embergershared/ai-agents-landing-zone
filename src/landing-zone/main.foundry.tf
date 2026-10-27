@@ -111,3 +111,48 @@ module "foundry" {
     }
   }
 }
+
+locals {
+  foundry_project_id           = module.foundry.ai_foundry_project_id["main"]
+  foundry_project_principal_id = module.foundry.ai_foundry_project_system_identity_principal_id["main"]
+}
+
+# Tracing: the project sends agent traces to Application Insights. Local authentication is off
+# there, so the connection uses the project's managed identity (Entra ID ingestion), which
+# needs Monitoring Metrics Publisher; project users need Log Analytics Reader to see the traces.
+resource "azurerm_role_assignment" "project_trace_ingestion" {
+  scope              = azurerm_application_insights.this.id
+  role_definition_id = local.role_ids.monitoring_metrics_publisher
+  principal_id       = local.foundry_project_principal_id
+  principal_type     = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "project_user_traces" {
+  for_each = var.project_user_principals
+
+  scope              = azurerm_application_insights.this.id
+  role_definition_id = local.role_ids.log_analytics_reader
+  principal_id       = each.value.principal_id
+  principal_type     = each.value.principal_type
+}
+
+resource "azapi_resource" "app_insights_connection" {
+  type      = "Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01"
+  name      = local.names.app_insights
+  parent_id = local.foundry_project_id
+  body = {
+    properties = {
+      category = "AppInsights"
+      target   = azurerm_application_insights.this.id
+      authType = "ProjectManagedIdentity"
+      metadata = {
+        ApiType    = "Azure"
+        ResourceId = azurerm_application_insights.this.id
+      }
+    }
+  }
+  # As in the Foundry module: the provider's embedded schema lags the API (ProjectManagedIdentity).
+  schema_validation_enabled = false
+
+  depends_on = [azurerm_role_assignment.project_trace_ingestion]
+}
