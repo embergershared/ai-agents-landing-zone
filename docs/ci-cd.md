@@ -14,11 +14,12 @@ comment) and bumped by Dependabot after a 7-day cooldown.
 
 | Job | Runs when | Steps |
 |---|---|---|
-| Detect stacks | always | .NET when a `*.slnx`/`*.sln`/`*.csproj` is tracked; Python when `requirements-dev.lock` or `requirements.lock` is. |
+| Detect stacks | always | Terraform when a `*.tf` is tracked: each folder with one, outside `modules/` and `tests/` folders, is a root module. .NET when a `*.slnx`/`*.sln`/`*.csproj` is tracked; Python when `requirements-dev.lock` or `requirements.lock` is. |
 | Workflow lint | always | actionlint (checksum-verified download) with shellcheck on every `run:` script. |
+| Terraform checks | Terraform | Terraform `TERRAFORM_VERSION` (workflow `env`), `terraform fmt -check -recursive` once, then in each root module `terraform init -backend=false -lockfile=readonly`, `terraform validate` and `terraform test` (no test files = warning). Every root module reports in the job summary, even after another failed. No Azure sign-in: tests use mocked providers. |
 | Package age gate | .NET or Python | `scripts/check_package_age.py`: every locked version at least 7 days old (see [supply-chain.md](supply-chain.md)). |
-| .NET build and test | .NET | `setup-dotnet` from `global.json`, NuGet cache, restore in locked mode, `dotnet format --verify-no-changes`, Release build, tests with `.trx` results uploaded. |
-| Python lint and test | Python | `setup-python` from `.python-version`, `pip install --require-hashes`, `ruff check`, `ruff format --check`, pytest (no tests = warning). |
+| .NET build and test | .NET | Kept from the template, skipped here (no .NET project): restore in locked mode, `dotnet format --verify-no-changes`, Release build, tests. It needs the template's .NET SDK and package files back first. |
+| Python lint and test | Python | Kept from the template, skipped here (no Python lock file): `pip install --require-hashes`, ruff, pytest. It needs the template's Python version and lock files back first. |
 | **CI result** | always | Fails when any job failed or was cancelled; skipped jobs are fine. The check the ruleset requires. |
 
 PR runs cancel the previous run of the same PR; runs on `main` are never cancelled.
@@ -55,15 +56,15 @@ Set one with `gh variable set DOTNET_SOLUTION --body src/App.slnx --repo <owner>
 
 ## Deploys
 
-The template has no deploy workflow: each project's target differs. For Azure, start the
-infrastructure from [embergershared/azd-private-starter-template](https://github.com/embergershared/azd-private-starter-template),
-and write the deploy workflow this way:
+There is no deploy workflow yet: phase 5 of the [deployment plan](deployment-plan.md) adds
+one (plan on each PR, apply on `main` behind an environment approval). Write it this way:
 - triggered by a green CI run on `main`, or by hand with a version (rollback);
 - behind an on/off repository variable and a GitHub environment (with required reviewers for
   anything beyond a sandbox);
 - Azure through OIDC (`id-token: write`, `azure/login`, a federated credential on a user-assigned
   managed identity or app registration), IDs from repository or environment variables, never a
-  client secret;
+  client secret; Terraform reads the same identity from `ARM_USE_OIDC`, `ARM_CLIENT_ID`,
+  `ARM_TENANT_ID` and `ARM_SUBSCRIPTION_ID` (see `.github/instructions/terraform.instructions.md`);
 - a concurrency group that is never cancelled.
 
 ## Private repositories

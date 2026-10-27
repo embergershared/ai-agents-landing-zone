@@ -2,6 +2,7 @@
 # has it:
 #   .NET   -> a *.slnx / *.sln / *.csproj is tracked
 #   Python -> requirements-dev.lock or requirements.lock is tracked
+#   Terraform -> a *.tf is tracked; each folder with one (outside modules/ and tests/) is a root module
 # "CI result" always reports and fails when any job failed: make it the one required check.
 name: CI
 
@@ -24,6 +25,10 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   PIP_DISABLE_PIP_VERSION_CHECK: 1
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  # A release at least 7 days old (package age gate); Dependabot doesn't bump it.
+  TERRAFORM_VERSION: 1.16.6
   ACTIONLINT_VERSION: 1.7.12
   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
 
@@ -37,6 +42,8 @@ jobs:
       dotnet-target: ${{ steps.stacks.outputs.dotnet-target }}
       python: ${{ steps.stacks.outputs.python }}
       python-lock: ${{ steps.stacks.outputs.python-lock }}
+      terraform: ${{ steps.stacks.outputs.terraform }}
+      terraform-roots: ${{ steps.stacks.outputs.terraform-roots }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,11 +69,19 @@ jobs:
           echo "python=$([ -n "$lock" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "python-lock=$lock" >> "$GITHUB_OUTPUT"
 
+          # Terraform root modules: the folders with a tracked *.tf, except shared modules
+          # (under a modules/ folder) and test helpers (under a tests/ folder).
+          roots=$(git ls-files -- '*.tf' | xargs -r -n1 dirname | sort -u \
+            | { grep -Ev '(^|/)(modules|tests)(/|$)' || true; } | paste -sd ' ' -)
+          echo "terraform=$([ -n "$roots" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "terraform-roots=$roots" >> "$GITHUB_OUTPUT"
+
           {
             echo "| Stack | Detected from |"
             echo "|---|---|"
             echo "| .NET | ${target:-not detected} |"
             echo "| Python | ${lock:-not detected} |"
+            echo "| Terraform | ${roots:-not detected} |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   workflows:
@@ -205,10 +220,66 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  terraform:
+    name: Terraform checks
+    needs: detect
+    if: needs.detect.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ROOTS: ${{ needs.detect.outputs.terraform-roots }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Format (every *.tf and *.tftest.hcl in the repository)
+        run: terraform fmt -check -recursive -diff
+
+      # No Azure sign-in here: init skips the backend, and terraform test runs against mocked
+      # providers (mock_provider). Runs after a format failure too; every root module runs and
+      # reports, even after another failed.
+      - name: Init, validate and test each root module
+        if: ${{ !cancelled() }}
+        run: |
+          export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/terraform-plugin-cache"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          failed=""
+          echo "| Root module | Init | Validate | Test |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          for root in $ROOTS; do
+            echo "::group::$root"
+            init=fail; validate=skipped; tests=skipped
+            # -lockfile=readonly: the committed .terraform.lock.hcl must cover every provider.
+            if terraform -chdir="$root" init -backend=false -lockfile=readonly; then
+              init=ok
+              if terraform -chdir="$root" validate; then validate=ok; else validate=fail; fi
+              if ! find "$root" -name '*.tftest.hcl' -print -quit | grep -q .; then
+                echo "::warning::$root has no terraform test files (*.tftest.hcl)"
+                tests="no tests"
+              elif terraform -chdir="$root" test; then
+                tests=ok
+              else
+                tests=fail
+              fi
+            fi
+            echo "::endgroup::"
+            echo "| \`$root\` | $init | $validate | $tests |" >> "$GITHUB_STEP_SUMMARY"
+            case "$init $validate $tests" in
+              *fail*) echo "::error::Terraform checks failed in $root"; failed="$failed $root" ;;
+            esac
+          done
+          [ -z "$failed" ]
+
   result:
     name: CI result
     if: always()
-    needs: [detect, workflows, package-age, dotnet, python]
+    needs: [detect, workflows, package-age, dotnet, python, terraform]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
