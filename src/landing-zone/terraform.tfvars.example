@@ -1,0 +1,29 @@
+# Copy to terraform.tfvars (gitignored) and adjust. No secrets and no real IDs in the example.
+location    = "swedencentral"
+name_prefix = "alz"
+environment = "dev"
+
+# Region must offer these models with quota (thousands of tokens per minute).
+model_deployments = {
+  "gpt-5.4-mini" = {
+    model_name    = "gpt-5.4-mini"
+    model_version = "2026-03-17"
+    sku           = "GlobalStandard"
+    capacity      = 10
+  }
+}
+
+# Entra groups that use the Foundry project (Foundry User role on the account).
+project_user_principals = {
+  deployers = {
+    principal_id   = "<entra-group-object-id>"
+    principal_type = "Group"
+  }
+}
+
+# Empty: all networks, Entra ID still required.
+allowed_ip_ranges = []
+
+tags = {
+  owner = "<team or alias>"
+}
