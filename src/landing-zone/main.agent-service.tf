@@ -2,7 +2,7 @@
 # dependencies switch"). On: the standard agent setup with our own Cosmos DB, AI Search and
 # Storage, their project connections, capability hosts and RBAC. Off: the basic setup, with
 # Microsoft-managed storage. With existing_agent_service_dependencies, an existing dedicated
-# set is connected instead of creating one.
+# set is connected instead of creating one. AI Search is created outside the module (below).
 locals {
   agent_service_enabled = var.deploy_agent_service_dependencies
   agent_deps_existing   = local.agent_service_enabled && var.existing_agent_service_dependencies != null
@@ -36,28 +36,6 @@ locals {
     }
   } : {}
 
-  agent_search_definition = local.agent_deps_create ? {
-    (local.agent_deps_key) = {
-      name                          = local.names.agent_search
-      sku                           = var.agent_search_sku
-      replica_count                 = var.agent_search_replica_count
-      partition_count               = 1
-      local_authentication_enabled  = false
-      public_network_access_enabled = true
-      network_rule_set = {
-        bypass   = length(var.allowed_ip_ranges) == 0 ? "None" : "AzureServices"
-        ip_rules = var.allowed_ip_ranges
-      }
-      enable_telemetry = var.enable_telemetry
-      diagnostic_settings = {
-        to_log_analytics = {
-          name                  = "to-log-analytics"
-          workspace_resource_id = azurerm_log_analytics_workspace.this.id
-        }
-      }
-    }
-  } : {}
-
   agent_storage_definition = local.agent_deps_create ? {
     (local.agent_deps_key) = {
       name                          = local.names.agent_storage
@@ -83,7 +61,46 @@ locals {
     storage_account_connection = { existing_resource_id = var.existing_agent_service_dependencies.storage_account_resource_id }
     } : {
     cosmos_db_connection       = { new_resource_map_key = local.agent_deps_key }
-    ai_search_connection       = { new_resource_map_key = local.agent_deps_key }
+    ai_search_connection       = { existing_resource_id = azurerm_search_service.agent[0].id }
     storage_account_connection = { new_resource_map_key = local.agent_deps_key }
+  }
+}
+
+# The Agent Service's AI Search is created here, not by the Foundry module, so it can live in
+# search_location: the module creates everything in one region, and a region can run out of
+# AI Search capacity. The project connects to it as an existing resource.
+resource "azurerm_search_service" "agent" {
+  count = local.agent_deps_create ? 1 : 0
+
+  name                          = local.names.agent_search
+  resource_group_name           = azurerm_resource_group.this.name
+  location                      = local.search_location
+  sku                           = var.agent_search_sku
+  replica_count                 = var.agent_search_replica_count
+  partition_count               = 1
+  local_authentication_enabled  = false
+  public_network_access_enabled = true
+  allowed_ips                   = var.allowed_ip_ranges
+  network_rule_bypass_option    = length(var.allowed_ip_ranges) == 0 ? "None" : "AzureServices"
+  tags                          = local.tags
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+resource "azurerm_monitor_diagnostic_setting" "agent_search" {
+  count = local.agent_deps_create ? 1 : 0
+
+  name                       = "to-log-analytics"
+  target_resource_id         = azurerm_search_service.agent[0].id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.this.id
+
+  enabled_log {
+    category_group = "allLogs"
+  }
+
+  enabled_metric {
+    category = "AllMetrics"
   }
 }

@@ -198,3 +198,9 @@ variable "app_settings_writer_principals" {
     error_message = "principal_type is Group, User or ServicePrincipal."
   }
 }
+
+variable "search_location" {
+  type        = string
+  description = "Region of the two AI Search services (the Agent Service's and the applications'), when it isn't location: for a region without AI Search capacity. Null: location."
+  default     = null
+}

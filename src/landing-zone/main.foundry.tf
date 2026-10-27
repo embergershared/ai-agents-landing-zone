@@ -68,8 +68,8 @@ module "foundry" {
   ai_model_deployments = local.foundry_model_deployments
 
   # Agent Service dependencies (main.agent-service.tf); empty maps when the switch is off.
+  # AI Search: azurerm_search_service.agent, connected as an existing resource.
   cosmosdb_definition        = local.agent_cosmos_db_definition
-  ai_search_definition       = local.agent_search_definition
   storage_account_definition = local.agent_storage_definition
 
   # Azure doesn't keep log_analytics_destination_type on a Foundry account, so every plan shows

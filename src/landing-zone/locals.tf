@@ -8,7 +8,10 @@ resource "random_string" "suffix" {
 
 locals {
   suffix = random_string.suffix.result
-  base   = "${var.name_prefix}-${var.environment}"
+
+  # AI Search can run in another region than the rest (search_location).
+  search_location = coalesce(var.search_location, var.location)
+  base            = "${var.name_prefix}-${var.environment}"
 
   names = {
     resource_group = "rg-${local.base}-${local.suffix}"

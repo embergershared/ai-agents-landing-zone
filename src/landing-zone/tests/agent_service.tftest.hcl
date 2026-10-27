@@ -24,6 +24,12 @@ mock_provider "azurerm" {
     }
   }
 
+  mock_resource "azurerm_search_service" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.Search/searchServices/srch-alz-dev-ab12"
+    }
+  }
+
   mock_resource "azurerm_key_vault" {
     defaults = {
       id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.KeyVault/vaults/kv-alz-dev-ab12"
@@ -74,12 +80,12 @@ run "switch_on_creates_the_dependencies" {
   }
 
   assert {
-    condition     = alltrue([for d in [local.agent_cosmos_db_definition, local.agent_search_definition, local.agent_storage_definition] : length(d) == 1 && contains(keys(d), "agent")])
+    condition     = alltrue([for d in [local.agent_cosmos_db_definition, local.agent_storage_definition] : length(d) == 1 && contains(keys(d), "agent")]) && length(azurerm_search_service.agent) == 1
     error_message = "With the switch on, Cosmos DB, AI Search and Storage are not all defined."
   }
 
   assert {
-    condition     = local.foundry_projects.main.cosmos_db_connection.new_resource_map_key == "agent" && local.foundry_projects.main.ai_search_connection.new_resource_map_key == "agent" && local.foundry_projects.main.storage_account_connection.new_resource_map_key == "agent"
+    condition     = local.foundry_projects.main.cosmos_db_connection.new_resource_map_key == "agent" && local.foundry_projects.main.ai_search_connection.existing_resource_id == azurerm_search_service.agent[0].id && local.foundry_projects.main.storage_account_connection.new_resource_map_key == "agent"
     error_message = "The project does not connect to the new dependency set."
   }
 
@@ -94,12 +100,12 @@ run "switch_on_creates_the_dependencies" {
   }
 
   assert {
-    condition     = local.agent_cosmos_db_definition["agent"].local_authentication_disabled == true && local.agent_search_definition["agent"].local_authentication_enabled == false && local.agent_storage_definition["agent"].shared_access_key_enabled == false
+    condition     = local.agent_cosmos_db_definition["agent"].local_authentication_disabled == true && azurerm_search_service.agent[0].local_authentication_enabled == false && local.agent_storage_definition["agent"].shared_access_key_enabled == false
     error_message = "A dependency accepts key authentication."
   }
 
   assert {
-    condition     = local.agent_cosmos_db_definition["agent"].public_network_access_enabled && local.agent_search_definition["agent"].public_network_access_enabled && local.agent_storage_definition["agent"].public_network_access_enabled
+    condition     = local.agent_cosmos_db_definition["agent"].public_network_access_enabled && azurerm_search_service.agent[0].public_network_access_enabled && local.agent_storage_definition["agent"].public_network_access_enabled
     error_message = "A dependency's public endpoint is off."
   }
 
@@ -132,7 +138,7 @@ run "switch_off_uses_the_basic_setup" {
   }
 
   assert {
-    condition     = length(local.agent_cosmos_db_definition) == 0 && length(local.agent_search_definition) == 0 && length(local.agent_storage_definition) == 0
+    condition     = length(local.agent_cosmos_db_definition) == 0 && length(azurerm_search_service.agent) == 0 && length(local.agent_storage_definition) == 0
     error_message = "With the switch off, a dependency is still defined."
   }
 
@@ -164,7 +170,7 @@ run "switch_on_with_existing_dependencies" {
   }
 
   assert {
-    condition     = length(local.agent_cosmos_db_definition) == 0 && length(local.agent_search_definition) == 0 && length(local.agent_storage_definition) == 0
+    condition     = length(local.agent_cosmos_db_definition) == 0 && length(azurerm_search_service.agent) == 0 && length(local.agent_storage_definition) == 0
     error_message = "With existing dependencies, a new dependency is still defined."
   }
 
@@ -199,8 +205,35 @@ run "provisioned_cosmos_db_and_ip_rules" {
   }
 
   assert {
-    condition     = local.agent_storage_definition["agent"].network_rules.default_action == "Deny" && local.agent_search_definition["agent"].network_rule_set.bypass == "AzureServices"
+    condition     = local.agent_storage_definition["agent"].network_rules.default_action == "Deny" && azurerm_search_service.agent[0].network_rule_bypass_option == "AzureServices"
     error_message = "allowed_ip_ranges does not restrict Storage and AI Search."
+  }
+}
+
+run "search_location_default" {
+  command = plan
+
+  assert {
+    condition     = azurerm_search_service.agent[0].location == "swedencentral" && azurerm_search_service.app[0].location == "swedencentral"
+    error_message = "Without search_location, the AI Search services are not in the landing zone's region."
+  }
+}
+
+run "search_location_other_region" {
+  command = plan
+
+  variables {
+    search_location = "norwayeast"
+  }
+
+  assert {
+    condition     = azurerm_search_service.agent[0].location == "norwayeast" && azurerm_search_service.app[0].location == "norwayeast" && azurerm_resource_group.this.location == "swedencentral"
+    error_message = "search_location does not move both AI Search services, or moves something else."
+  }
+
+  assert {
+    condition     = local.foundry_projects.main.ai_search_connection.existing_resource_id == azurerm_search_service.agent[0].id
+    error_message = "The project does not connect to the Agent Service's AI Search."
   }
 }
 
