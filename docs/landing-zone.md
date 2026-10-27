@@ -11,6 +11,8 @@ uses the Foundry AVM pattern module `Azure/avm-ptn-aiml-ai-foundry/azurerm` 0.12
 |---|---|---|
 | Core | `main.core.tf` | Resource group; Log Analytics (key auth off); workspace-based Application Insights (key auth off); Key Vault (RBAC authorization, purge protection, 90-day soft delete, diagnostics to Log Analytics). |
 | Foundry | `main.foundry.tf` | Foundry (AI Services) account with key auth off and public endpoint on; one project; the model deployments; diagnostics to Log Analytics; Foundry User for `project_user_principals`. |
+| Application platform | `main.app-platform.tf` | Behind `deploy_application_platform`: App Configuration (key auth off) holding the landing zone's endpoints and names, labeled with the environment; Container Registry (no admin user, no anonymous pull); Container Apps environment (logs to Log Analytics through a diagnostic setting); the applications' user-assigned identity, with App Configuration Data Reader, AcrPull and Foundry User. |
+| Application data | `main.app-data.tf` | Behind `deploy_application_data`: the applications' own AI Search and Storage (key auth off), with Search Index Data Contributor and Storage Blob Data Contributor for the applications' identity. |
 | Agent Service | `main.agent-service.tf` | Behind `deploy_agent_service_dependencies`: Cosmos DB (serverless by default), AI Search and Storage, all with key auth off and public endpoints; the project's connections to them, the account and project capability hosts, and the RBAC the Agent Service needs. |
 
 Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`,
@@ -33,6 +35,9 @@ Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`
 | `existing_agent_service_dependencies` | none | Resource IDs of an existing dedicated Cosmos DB, AI Search and Storage to connect instead of creating them. |
 | `agent_cosmos_db_serverless` | `true` | Serverless Cosmos DB; off: provisioned, with `agent_cosmos_db_total_throughput_limit` (-1 or at least 3000 RU/s). |
 | `agent_search_sku`, `agent_search_replica_count` | `basic`, 1 | AI Search for the Agent Service. |
+| `deploy_application_platform` | `true` | App Configuration, Container Registry, Container Apps environment, applications' identity (decision D2). |
+| `deploy_application_data` | `true` | The applications' AI Search and Storage (decision D2). |
+| `app_configuration_sku`, `container_registry_sku`, `app_search_sku` | `standard`, `Basic`, `basic` | SKUs of the application resources. |
 
 `terraform.tfvars.example` shows them all; copy it to `terraform.tfvars` (gitignored).
 
@@ -64,6 +69,26 @@ Invoke-RestMethod -Method Post -Uri "${endpoint}openai/v1/chat/completions" -Hea
 
 The caller needs the Foundry User role on the account (through `project_user_principals`).
 A call with an `api-key` header gets 401: key authentication is off.
+
+## Settings in App Configuration
+
+With the platform on, Terraform writes these keys, labeled with the environment (`dev`). The
+identity running Terraform gets App Configuration Data Owner to write them through the data
+plane.
+
+| Key | Value |
+|---|---|
+| `landingzone:foundry:openai_endpoint` | OpenAI-compatible endpoint of the Foundry account |
+| `landingzone:foundry:project_endpoint` | Foundry project endpoint |
+| `landingzone:foundry:models` | Model deployment names, comma-separated |
+| `landingzone:agent_service:setup` | `standard` or `basic` |
+| `landingzone:key_vault:uri` | Key Vault URI |
+| `landingzone:app_insights:connection` | Application Insights connection string |
+| `landingzone:app_data:search_endpoint`, `landingzone:app_data:blob_endpoint` | Application data endpoints (data on) |
+
+An application running as the applications' identity reads them with Entra ID, for example
+`az appconfig kv list --endpoint <endpoint> --auth-mode login --label dev` after
+`az login --identity --client-id <client-id>`.
 
 ## The Agent Service dependencies switch
 

@@ -19,6 +19,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and a Foundry account, project and `gpt-5.4-mini` deployment on public endpoints with key authentication off (#8).
 - Agent Service dependencies switch: `deploy_agent_service_dependencies` deploys the standard agent setup (Cosmos DB,
   AI Search, Storage, connections, capability hosts, RBAC), reuses an existing set, or keeps the basic setup (#9).
+- Application platform and data: App Configuration with the landing zone's endpoints, Container Registry, Container Apps
+  environment, the applications' managed identity, and their own AI Search and Storage, each behind a switch (#10).
 
 ### Changed
 - The agent rules and `docs/` describe this Terraform repository and no longer refer to the removed .NET and Python

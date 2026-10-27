@@ -52,3 +52,35 @@ output "agent_service_dependencies" {
     storage_account_name = local.agent_deps_existing ? provider::azurerm::parse_resource_id(var.existing_agent_service_dependencies.storage_account_resource_id).resource_name : local.names.agent_storage
   } : null
 }
+
+output "app_configuration_endpoint" {
+  description = "App Configuration endpoint; the settings are labeled with the environment."
+  value       = local.app_platform ? azurerm_app_configuration.this[0].endpoint : null
+}
+
+output "app_identity" {
+  description = "User-assigned identity the applications run as."
+  value = local.app_platform ? {
+    resource_id  = azurerm_user_assigned_identity.app[0].id
+    client_id    = azurerm_user_assigned_identity.app[0].client_id
+    principal_id = azurerm_user_assigned_identity.app[0].principal_id
+  } : null
+}
+
+output "container_registry_login_server" {
+  description = "Container Registry login server."
+  value       = local.app_platform ? azurerm_container_registry.this[0].login_server : null
+}
+
+output "container_app_environment_id" {
+  description = "Container Apps environment."
+  value       = local.app_platform ? azurerm_container_app_environment.this[0].id : null
+}
+
+output "app_data" {
+  description = "The applications' AI Search and Storage."
+  value = local.app_data ? {
+    search_name          = azurerm_search_service.app[0].name
+    storage_account_name = azurerm_storage_account.app[0].name
+  } : null
+}

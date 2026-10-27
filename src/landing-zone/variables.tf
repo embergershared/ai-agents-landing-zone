@@ -139,3 +139,48 @@ variable "agent_search_replica_count" {
   description = "AI Search replicas for the Agent Service (2 or more for a read SLA)."
   default     = 1
 }
+
+variable "deploy_application_platform" {
+  type        = bool
+  description = "Deploy the application platform: App Configuration with the landing zone's endpoints, Container Registry, Container Apps environment and the applications' managed identity."
+  default     = true
+}
+
+variable "deploy_application_data" {
+  type        = bool
+  description = "Deploy the applications' own AI Search and Storage (separate from the Agent Service's)."
+  default     = true
+}
+
+variable "app_configuration_sku" {
+  type        = string
+  description = "App Configuration SKU."
+  default     = "standard"
+
+  validation {
+    condition     = contains(["free", "developer", "standard", "premium"], var.app_configuration_sku)
+    error_message = "app_configuration_sku is free, developer, standard or premium."
+  }
+}
+
+variable "container_registry_sku" {
+  type        = string
+  description = "Container Registry SKU."
+  default     = "Basic"
+
+  validation {
+    condition     = contains(["Basic", "Standard", "Premium"], var.container_registry_sku)
+    error_message = "container_registry_sku is Basic, Standard or Premium."
+  }
+}
+
+variable "app_search_sku" {
+  type        = string
+  description = "SKU of the applications' AI Search."
+  default     = "basic"
+
+  validation {
+    condition     = contains(["basic", "standard", "standard2", "standard3"], var.app_search_sku)
+    error_message = "app_search_sku is basic, standard, standard2 or standard3."
+  }
+}
