@@ -213,5 +213,7 @@ has the design, the phases and the decisions still open.
 - **Checks:** `terraform fmt -check -recursive`, then in each root module
   `terraform init -backend=false`, `terraform validate` and `terraform test`. CI runs the same.
   Nothing is applied to Azure without an explicit go-ahead; a `terraform plan` is fine.
+- **Operating it:** `docs/runbook.md` (deploy, verify, change, retire, troubleshooting, cost);
+  `docs/state-backend.md`, `docs/landing-zone.md` and `docs/ci-cd.md` hold the details.
 - **Repository:** private, on GitHub Free, so `main` has no ruleset: open every change as a PR
   and merge it only when **CI result** and **PR rules** are green.
