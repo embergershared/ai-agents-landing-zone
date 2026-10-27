@@ -22,4 +22,10 @@ jobs:
           echo "$at" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | jq '{aud, oid, appid, idtyp}' || true
           code=$(curl -sS -o body.txt -w "%{http_code}" -H "Authorization: Bearer $at" "https://appcs-alz-dev-l9pk.azconfig.io/kv?label=dev&api-version=2023-10-01")
           echo "direct GET kv: $code"
-          head -c 400 body.txt
+          head -c 200 body.txt; echo
+          for res in https://appcs-alz-dev-l9pk.azconfig.io https://appcs-alz-dev-l9pk.azconfig.io/ https://azconfig.io/; do
+            t=$(az account get-access-token --resource "$res" --query accessToken -o tsv)
+            aud=$(echo "$t" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | jq -r .aud)
+            c=$(curl -sS -o b2.txt -w "%{http_code}" -H "Authorization: Bearer $t" "https://appcs-alz-dev-l9pk.azconfig.io/kv/landingzone:foundry:models?label=dev&api-version=2023-10-01")
+            echo "resource=$res aud=$aud GET key: $c $(head -c 150 b2.txt)"
+          done
