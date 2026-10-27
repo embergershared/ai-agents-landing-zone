@@ -216,7 +216,9 @@ decisions still open.
   When a resource moves between groups or changes address, add a `moved` block.
 - **Code in `src/`:** `src/state-backend/` (one-time remote state bootstrap) and
   `src/landing-zone/` (the root module, with `tests/` and `environments/`). Terraform rules are
-  in `.github/instructions/terraform.instructions.md`.
+  in `.github/instructions/terraform.instructions.md`. `scripts/New-StateBackend.ps1` deploys an
+  environment's backend from its `environments/<env>.tfvars`; its bootstrap state is kept per
+  subscription and `name_prefix` (`docs/state-backend.md`).
 - **Checks:** `terraform fmt -check -recursive`, then in each root module
   `terraform init -backend=false`, `terraform validate` and `terraform test`. CI runs the same.
   Nothing is applied to Azure without an explicit go-ahead; a `terraform plan` is fine.

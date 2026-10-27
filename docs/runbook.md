@@ -27,23 +27,26 @@ az account show --query "{subscription:name, tenant:tenantId, user:user.name}" -
 
 ## 2. Deploy
 
-### 2.1 State backend (once per subscription, again for each new environment)
+### 2.1 State backend (once per environment)
 
-Each environment needs its state container: list every environment in `environments` in the
-bootstrap's `terraform.tfvars`. To add one later, add its name there and run these steps again.
+Each environment needs its state container. The script reads `location`, `name_prefix`, `tags`
+and `allowed_ip_ranges` from the environment's `environments/<env>.tfvars`, creates or updates
+the backend for that `name_prefix` with a `tfstate-<env>` container, and writes
+`environments/<env>.backend.hcl`. Environments with the same `name_prefix` share one backend.
 
 ```powershell
-Set-Location src/state-backend
-Copy-Item terraform.tfvars.example terraform.tfvars   # gitignored: set environments, tags, github_deployer
-terraform init -backend-config="path=$HOME/.terraform-state/ai-agents-landing-zone/state-backend/terraform.tfstate"
-terraform plan -out bootstrap.tfplan
-terraform apply bootstrap.tfplan
-terraform output backend_config
-az storage account show -n (terraform output -raw storage_account_name) --query publicNetworkAccess -o tsv   # must be Enabled
-Set-Location ../..
+$envName = 'dev'
+./scripts/New-StateBackend.ps1 -Environment $envName -PlanOnly   # dry run: shows the plan, changes nothing
+./scripts/New-StateBackend.ps1 -Environment $envName             # asks before it applies
 ```
 
-Back up the folder that holds the bootstrap state (`$HOME/.terraform-state/...`).
+It stops before applying when the plan would delete or replace anything, and fails when the
+storage account's public network access is off. The pipeline identity (`github_deployer`) and
+the other bootstrap-only values still come from `src/state-backend/terraform.tfvars`
+(gitignored, copied from its `.example`). The manual commands are in
+[state-backend.md](state-backend.md#bootstrap-once-per-subscription-and-name-prefix).
+
+Back up the folder that holds the bootstrap states (`$HOME/.terraform-state/...`).
 
 ### 2.2 The environment
 
@@ -54,9 +57,7 @@ Set-Location src/landing-zone
 $envName = 'dev'
 # environments/<env>.tfvars holds the committed values. For a new environment, copy dev.tfvars,
 # set environment = "<env>", and review region, search_location, switches and tags.
-# <env>.backend.hcl (gitignored): copy the example, fill it from backend_config, and set
-# container_name = "tfstate-<env>".
-Copy-Item environments/dev.backend.hcl.example "environments/$envName.backend.hcl"
+# <env>.backend.hcl (gitignored) was written by scripts/New-StateBackend.ps1 (2.1).
 # -reconfigure: needed when this folder was initialized for another environment before
 terraform init -reconfigure -backend-config="environments/$envName.backend.hcl"
 $env:TF_VAR_project_user_principals = '{"users":{"principal_id":"<entra-group-object-id>","principal_type":"Group"}}'
@@ -146,7 +147,8 @@ Common changes:
    name has a random suffix, so a redeploy doesn't collide with it.
 5. Remove the environment from the pipeline: its `github_deployer.environments` entry (apply the
    bootstrap again), its `PROJECT_USER_PRINCIPALS_<ENV>` and `APP_SETTINGS_WRITERS_<ENV>`
-   secrets, its GitHub environment, and its state container (from `environments` in the bootstrap).
+   secrets, its GitHub environment, and its state container (a manual bootstrap run without
+   it in `environments`: [state-backend.md](state-backend.md#remove-an-environments-container)).
 
 Retire the state backend only after every environment is gone ([state-backend.md](state-backend.md#retire)).
 

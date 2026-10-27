@@ -19,10 +19,45 @@ The storage account's management-plane properties include its access keys, so th
 (marked sensitive) in the bootstrap's own state. With shared key access off, those keys
 can't be used.
 
-## Bootstrap (once per subscription)
+## Bootstrap (once per subscription and name prefix)
 
-The bootstrap keeps its own small state in a local file **outside the repository working
-copy**, so a cleaned-up clone or worktree doesn't lose it. Back that folder up.
+One backend serves every environment with the same `name_prefix` in a subscription; each
+environment adds its `tfstate-<env>` container. The bootstrap keeps its own small state in a
+local file **outside the repository working copy**, one per subscription and name prefix, so a
+cleaned-up clone or worktree doesn't lose it, and a second prefix never replaces the first one's
+backend. Back that folder up:
+```
+$HOME/.terraform-state/ai-agents-landing-zone/state-backend/<subscription-id>/<name_prefix>/terraform.tfstate
+```
+
+### With the script
+
+`scripts/New-StateBackend.ps1` deploys an environment's backend from the environment's own
+`src/landing-zone/environments/<env>.tfvars`, so both use the same values. PowerShell
+(workstation), from the repository root, signed in to the target subscription:
+```powershell
+az login --tenant <tenant-id>
+az account set --subscription <subscription-id>
+./scripts/New-StateBackend.ps1 -Environment dev -PlanOnly   # dry run
+./scripts/New-StateBackend.ps1 -Environment dev
+```
+
+| Step | What it does |
+|---|---|
+| Inputs | Reads `environment` and `name_prefix` from `<env>.tfvars`; the file name and `environment` must match. |
+| Init | Uses the subscription and prefix's bootstrap state. It stops when a deployed backend is still in the older single state file (`state-backend/terraform.tfstate`) and gives the command that moves it. |
+| Plan | Passes `<env>.tfvars` to the bootstrap (`location`, `name_prefix`, `tags`, `allowed_ip_ranges`; Terraform warns about the variables the bootstrap doesn't declare) and sets `environments` to the containers already there plus this one. Values that only the bootstrap has, such as `github_deployer` or `replication_type`, still come from `src/state-backend/terraform.tfvars`. |
+| Guard | Stops when the plan deletes or replaces anything: environments sharing a backend must agree on `location`, and their `tags` are the backend's tags. |
+| Apply | Asks first, unless `-AutoApprove`; `-PlanOnly` stops before. |
+| Check | Fails when the storage account's `publicNetworkAccess` isn't `Enabled` (see the policy section below). |
+| Output | Writes `environments/<env>.backend.hcl` from `backend_config`. |
+
+The resource group and storage account keep their random suffix (`rg-<prefix>-tfstate-<suffix>`,
+`st<prefix>tfstate<suffix>`): storage account names are global, and a new backend never reuses
+a retired one's name. With the 24-character limit on storage account
+names, `name_prefix` is at most 8 lowercase letters or digits here (7 in the landing zone).
+
+### By hand
 
 PowerShell (workstation), from the repository root:
 ```powershell
@@ -31,10 +66,10 @@ az account set --subscription <subscription-id>
 $env:ARM_SUBSCRIPTION_ID = az account show --query id -o tsv
 
 Set-Location src/state-backend
-$statePath = "$HOME/.terraform-state/ai-agents-landing-zone/state-backend/terraform.tfstate"
-terraform init -backend-config="path=$statePath"
+$statePath = "$HOME/.terraform-state/ai-agents-landing-zone/state-backend/$env:ARM_SUBSCRIPTION_ID/<name_prefix>/terraform.tfstate"
+terraform init -reconfigure -backend-config="path=$statePath"
 
-# Optional: copy terraform.tfvars.example to terraform.tfvars (gitignored) and adjust it
+# Copy terraform.tfvars.example to terraform.tfvars (gitignored) and set environments, tags, ...
 terraform plan -out bootstrap.tfplan
 terraform apply bootstrap.tfplan
 terraform output backend_config
@@ -42,9 +77,19 @@ terraform output backend_config
 
 `*.tfplan` files are gitignored: a plan can hold sensitive values. Delete it after the apply.
 
+### Remove an environment's container
+
+The script only adds containers. To remove one, run the bootstrap by hand with `environments`
+set to the ones that stay, after that environment's state has been destroyed or moved:
+```powershell
+terraform plan -var='environments=["dev"]' -out bootstrap.tfplan
+```
+The container has soft delete: it can be restored for `soft_delete_retention_days`.
+
 ## Use the backend from a root module
 
-Each environment gets a `<env>.backend.hcl` file built from the `backend_config` output.
+Each environment gets a `<env>.backend.hcl` file built from the `backend_config` output (the
+script writes it).
 It holds the real resource names, so it is gitignored; the committed
 `<env>.backend.hcl.example` shows its shape:
 ```hcl
