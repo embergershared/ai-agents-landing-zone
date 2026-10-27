@@ -32,7 +32,7 @@ is structural.
 
 | Option | For | Against | Verdict |
 |---|---|---|---|
-| **A. Own root module from AVM modules**, centered on the Foundry pattern module `Azure/avm-ptn-aiml-ai-foundry/azurerm` with `create_private_endpoints = false` | Supports public endpoints natively (upstream `public` example). Has switches for the Agent Service and its dependencies. Same AVM modules the landing zone module uses. | We own the composition: naming, RBAC, diagnostics, the application platform. Not upstream parity, so it needs its own testing. | **Recommended** |
+| **A. Own root module from AVM modules**, centered on the Foundry pattern module `Azure/avm-ptn-aiml-ai-foundry/azurerm` with `create_private_endpoints = false` | Supports public endpoints natively (upstream `public` example). Has switches for the Agent Service and its dependencies. Same AVM modules the landing zone module uses. | We own the composition: naming, RBAC, diagnostics, the workload resources. Not upstream parity, so it needs its own testing. | **Recommended** |
 | B. Upstream landing zone module | Least code to write | Can't do public endpoints. Strategy under review upstream. | Rejected |
 | C. Fork and patch the landing zone module | Close to upstream | Large, private-first module to maintain against upstream changes; the patch reverses its core design. | Rejected |
 | D. Bicep with `azd` (upstream supported path) | Supported by the Agent Landing Zone team, public mode is its default, and it also deploys the Agent Application | Not Terraform, which the customer wants | Keep as the fallback, and as the reference for what to build |
@@ -57,23 +57,37 @@ mode, as Terraform, with remote state, CI checks and a deployment runbook.
 | Path | Content |
 |---|---|
 | `src/state-backend/` | One-time bootstrap of the remote state: resource group, storage account and container (Entra ID auth, versioning, soft delete). Its own small local state. |
-| `src/landing-zone/` | The root module: providers, variables, one file per area (`main.foundry.tf`, `main.monitoring.tf`, …), outputs. |
+| `src/landing-zone/` | The root module: providers, variables, outputs, and one file per resource group below: `main.foundry.tf` (group 1), `main.agent-service.tf` (group 2), `main.workload.tf` (group 3). |
 | `src/landing-zone/environments/<env>.tfvars` | Per-environment values: region, prefix, switches, models. No secrets. |
 | `src/landing-zone/tests/` | `terraform test` files with mocked providers that check what each switch creates. |
 | `docs/runbook.md` | Deploy, verify, change and retire steps. |
 
-### Resources
+### Resources, in three groups
 
-| Group | Resources | Switch | Default |
-|---|---|---|---|
-| **Core** | Resource group; Log Analytics workspace; Application Insights; Key Vault | always | on |
-| **Foundry** | Foundry account (public endpoint, local auth disabled), one project, model deployments | always | on |
-| **Agent Service dependencies** | Cosmos DB for NoSQL (at least 3000 RU/s, or serverless), AI Search, Storage account; the project connections to them; the account and project capability hosts; the RBAC the Agent Service needs on them | `deploy_agent_service_dependencies` | on |
-| **Application platform** | App Configuration, Container Registry, Container Apps environment, user-assigned managed identity with its RBAC | `deploy_application_platform` | on (see [D2](#4-decisions-to-confirm)) |
-| **Application data** | AI Search and Storage for the application's own documents and index | `deploy_application_data` | on (see [D2](#4-decisions-to-confirm)) |
-| **Not deployed** | VNet, subnets, NSGs, private endpoints, private DNS, firewall, jumpbox, Bastion, NAT gateway, API Management | none | off |
+The deployed resources fall into three groups. Group 1 is always deployed; groups 2 and 3
+each have one switch, so an environment can be "Foundry only", "Foundry and agents", or
+the full landing zone.
 
-All resources send diagnostics to the Log Analytics workspace, and all take the same tags.
+| Group | What it is for | Resources | Switch | Default |
+|---|---|---|---|---|
+| **1. Foundry essentials** | Foundry itself and what it needs to run: serve models and host a project | Resource group; Foundry account (public endpoint, local auth disabled); one project; model deployments; Log Analytics workspace and Application Insights (diagnostics, and the project's tracing connection); RBAC for the deployer and user groups on the account and project | none: always | on |
+| **2. Agent Service dependencies** | The Foundry Agent Service's own data stores (the *standard* agent setup) | Cosmos DB for NoSQL (at least 3000 RU/s, or serverless), AI Search, Storage account (and the Foundry module's Key Vault); the project connections to them; the account and project capability hosts; the RBAC the Agent Service needs on them | `deploy_agent_service_dependencies` | on |
+| **3. Workload** | What applications and agents built on the landing zone run on and use | App Configuration (with the Foundry endpoint and deployment names as settings); Container Registry; Container Apps environment; user-assigned managed identity with its RBAC; Key Vault for workload secrets; a second AI Search and a Storage account for the application's own documents and index | `deploy_workload` | on (see [D2](#4-decisions-to-confirm)) |
+| **Not deployed** | | VNet, subnets, NSGs, private endpoints, private DNS, firewall, jumpbox, Bastion, NAT gateway, API Management | none | off |
+
+How the groups relate:
+
+- **Groups 2 and 3 build on group 1, not on each other.** Either can be on or off alone.
+  Group 3 reads group 1's outputs (Foundry endpoint, project, deployment names); it never
+  uses group 2's resources.
+- **Group 3 has its own AI Search and Storage.** Group 2's belong to the Agent Service of
+  this Foundry instance only (upstream warns against sharing them), so the application's
+  indexes and documents never go there.
+- **One resource group and one Terraform state** per environment hold all three groups
+  (decided, see [D8](#4-decisions-to-confirm)).
+
+All resources send diagnostics to group 1's Log Analytics workspace, and all take the same
+tags.
 
 ### The Agent Service dependencies switch
 
@@ -128,11 +142,15 @@ explicit go-ahead.
 |---|---|---|---|
 | 0 | **Repository Terraform tooling** | `.gitignore` for state and `.terraform/`, CI job for `fmt`, `validate` and `test`, Dependabot for Terraform, Terraform agent rules, cleanup of the template's .NET and Python references | CI runs the Terraform checks on a sample module |
 | 1 | **State backend** | `src/state-backend/`: storage account with Entra ID auth, versioning, soft delete, one container per environment; backend settings documented | Bootstrap applied in dev (after approval); `terraform init` of an empty root module uses it |
-| 2 | **Core and Foundry** | `src/landing-zone/` with core resources, Foundry account, project and one model deployment, public endpoints, diagnostics, RBAC for a deployer group | Plan reviewed; applied in dev (after approval); the model answers a call made with an Entra ID token |
-| 3 | **Agent Service dependencies switch** | `deploy_agent_service_dependencies` and `existing_agent_service_dependencies`, Cosmos DB throughput, connections, capability hosts, RBAC | `terraform test` covers on, off and reuse; dev applied both ways; an agent created in the project stores its thread in our Cosmos DB (on) or works in basic setup (off) |
-| 4 | **Application platform and data** | App Configuration (with the endpoints and names as settings), Container Registry, Container Apps environment, managed identity, application AI Search and Storage, each behind its switch | Plan and dev apply reviewed; a test container reads its settings from App Configuration with its managed identity |
+| 2 | **Group 1: Foundry essentials** | `src/landing-zone/` with `main.foundry.tf`: resource group, Log Analytics, Application Insights, Foundry account, project and one model deployment, public endpoints, diagnostics, RBAC for the deployer and user groups | Plan reviewed; applied in dev (after approval); the model answers a call made with an Entra ID token |
+| 3 | **Group 2: Agent Service dependencies** | `main.agent-service.tf`: `deploy_agent_service_dependencies` and `existing_agent_service_dependencies`, Cosmos DB throughput, connections, capability hosts, RBAC | `terraform test` covers on, off and reuse; dev applied both ways; an agent created in the project stores its thread in our Cosmos DB (on) or works in basic setup (off) |
+| 4 | **Group 3: Workload** | `main.workload.tf` behind `deploy_workload`: App Configuration (with the group 1 endpoints and names as settings), Container Registry, Container Apps environment, managed identity, Key Vault, application AI Search and Storage | `terraform test` covers on and off; plan and dev apply reviewed; a test container reads its settings from App Configuration with its managed identity |
 | 5 | **Environments and pipeline** | `environments/<env>.tfvars`, GitHub Actions with OIDC: plan on each PR, apply on `main` behind an environment approval | A PR shows the plan; an approved run applies to dev |
 | 6 | **Runbook and handover** | `docs/runbook.md`: prerequisites, quotas, deploy, verify, change, retire; cost estimate per environment | Someone else deploys a fresh dev environment from the runbook alone |
+
+Phases 2 to 4 were first built on five groups (core, Foundry, Agent Service dependencies,
+application platform, application data); issue #25 regrouped the code into the three groups
+above, with `moved` blocks so that no resource is replaced.
 
 Phases 0 and 1 can run in parallel; 2 needs 1; 3 and 4 need 2 and can run in parallel; 5
 needs 2; 6 comes last.
@@ -151,12 +169,13 @@ needs 2; 6 comes last.
 | # | Decision | Recommendation |
 |---|---|---|
 | D1 | How is the Agent Application deployed, if at all? Upstream, only `azd` deploys it, and only onto infrastructure it provisioned. | Infrastructure only for now. If the reference application is wanted, plan a separate phase to deploy its components (pinned versions from upstream `manifest.json`) onto the Terraform-built platform, and accept that this is not an upstream-supported combination. |
-| D2 | Which application resources are needed (application platform, application data)? | Keep them, switchable, so the landing zone matches upstream *standard* mode. Turn them off for a "Foundry and agents only" environment. |
+| D2 | Is the workload group (group 3) needed, and all of it? | Keep it, behind `deploy_workload`, so the landing zone matches upstream *standard* mode. Turn it off for a "Foundry and agents only" environment. Add finer switches inside the group only if an environment needs part of it. |
 | D3 | Region(s) and models (names, versions, capacity), per environment | Choose a region with the models, Agent Service and AI Search quota for two services; check quotas before phase 2. |
 | D4 | Environments and subscriptions (e.g. dev and prod, one subscription each) | One state and one `tfvars` per environment. |
 | D5 | Who deploys, and with which rights? | A pipeline identity with Contributor and Role Based Access Administrator (limited to the roles the landing zone grants) on the target resource group or subscription. Contributor alone can't create the role assignments. |
 | D6 | Are IP allow lists wanted on the public endpoints from day one? | Start with them empty in dev; decide per service for prod. |
 | D7 | Naming convention | AVM naming with a `name_prefix` and short random suffix, like the upstream modules; or the customer's own convention if there is one. |
+| D8 | Should the three groups live in separate resource groups, or separate Terraform states? | **Decided (2026-10-27): one resource group and one Terraform state for all three groups.** Why: the Foundry module creates group 2 in the same resource group as the Foundry account, and one state keeps the outputs between groups simple. If the workload must later be owned or retired apart, move group 3 to its own resource group first; group 2 can only move out by creating it outside the module and passing it in through `existing_agent_service_dependencies`. |
 
 ## 5. Risks
 
@@ -166,7 +185,7 @@ needs 2; 6 comes last.
 | Upstream Terraform strategy is "under review" | Modules or guidance may change | Pin module versions; review upstream changes when bumping them |
 | Preview APIs (capability hosts use a `2025-10-01-preview` API version) | Behavior may change | Pin the Foundry module version; test the switch in dev before each bump |
 | Cosmos DB throughput too low | Capability host fails to provision | At least 3000 RU/s, or serverless; covered by a `terraform test` check |
-| Search quota | Two Search services when both the dependencies and the application data are on | Check quota in the chosen region before phase 3 |
+| Search quota | Two Search services when groups 2 and 3 are both on | Check quota in the chosen region before phase 3 |
 | Soft-deleted Foundry account blocks a redeploy with the same name | Apply fails after a destroy | Random suffix in names; documented purge step in the runbook |
 | Public endpoints exposed to the internet | Larger attack surface | Entra ID only, RBAC, optional IP lists, diagnostics, Defender for Cloud recommendations reviewed |
 | Module version age gate | The newest version (e.g. Foundry 0.13.0) may be too recent | Use the newest version at least 7 days old (0.12.0 today) |
