@@ -25,8 +25,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   plans or applies one by hand from `main`, signing in through OIDC with a pipeline identity from `src/state-backend` (#11).
 - Runbook: prerequisites, deploy, verify, change, retire (with the soft-delete purges), troubleshooting and a cost
   estimate per environment, in `docs/runbook.md` (#12).
+- `search_location`: both AI Search services can run in another region than the landing zone; dev uses Norway East,
+  because Sweden Central had no AI Search capacity (#9).
 
 ### Changed
+- Dev carries the tenant policy's exemption tag, so Storage, Key Vault and Cosmos DB keep their public endpoints, and runs
+  the Agent Service's standard setup (#7, #9).
+- The runbook was followed end to end on a fresh environment; its gaps are fixed and the run is recorded (#12).
 - The agent rules and `docs/` describe this Terraform repository and no longer refer to the removed .NET and Python
   files (#6).
 - The landing zone's resources are in three groups, one file each: Foundry essentials (`main.foundry.tf`, now with the
