@@ -61,6 +61,7 @@ override_module {
   target = module.foundry
   outputs = {
     ai_foundry_name = "aif-alz-dev-ab12"
+    ai_foundry_id   = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.CognitiveServices/accounts/aif-alz-dev-ab12"
   }
 }
 
