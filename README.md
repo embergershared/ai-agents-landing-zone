@@ -54,7 +54,6 @@ Every change starts with an issue, gets its own `<type>/<issue>-<slug>` branch, 
 | [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | How to contribute |
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | The full rules, for people and AI coding assistants |
 | [docs/supply-chain.md](docs/supply-chain.md) | Package feeds, age gate, lock files |
-| [docs/database.md](docs/database.md) | Database migrations, backups, rollback |
 | [docs/decisions/](docs/decisions/) | Decision records |
 | [CHANGELOG.md](CHANGELOG.md) | Changes |
 | [SECURITY.md](SECURITY.md) | Reporting a vulnerability |
