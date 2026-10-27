@@ -1,7 +1,7 @@
 # Sources
 
 The upstream sources behind [AGENT-LANDING-ZONE.md](AGENT-LANDING-ZONE.md), [IMPLEMENTATIONS.md](IMPLEMENTATIONS.md)
-and [AGENT-SERVICE.md](AGENT-SERVICE.md). Back to the [README](README.md).
+and [AGENT-SERVICE.md](AGENT-SERVICE.md). Back to the [README](../README.md).
 
 Read on 2026-10-27.
 
