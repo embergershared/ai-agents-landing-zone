@@ -50,8 +50,9 @@ mock_provider "time" {
 
 # A local terraform.tfvars is loaded by terraform test too: pin the inputs the runs depend on.
 variables {
-  project_user_principals = {}
-  allowed_ip_ranges       = []
+  project_user_principals           = {}
+  allowed_ip_ranges                 = []
+  deploy_agent_service_dependencies = true
 }
 
 # The Foundry module is replaced by its outputs: its own tests cover it, and the mocks can't run
@@ -122,8 +123,8 @@ run "defaults" {
   }
 
   assert {
-    condition     = local.foundry_account.create_ai_agent_service == false && local.foundry_projects.main.create_project_connections == false
-    error_message = "Phase 2 deploys no Agent Service dependencies."
+    condition     = local.foundry_account.create_ai_agent_service == true && local.foundry_projects.main.create_project_connections == true
+    error_message = "The Agent Service dependencies switch is not on by default (see agent_service.tftest.hcl)."
   }
 
   assert {

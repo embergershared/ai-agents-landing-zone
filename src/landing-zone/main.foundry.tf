@@ -5,7 +5,7 @@ locals {
   foundry_account = {
     name                          = local.names.foundry
     disable_local_auth            = true
-    create_ai_agent_service       = false
+    create_ai_agent_service       = local.agent_service_enabled
     public_network_access_enabled = true
     network_acls = length(var.allowed_ip_ranges) == 0 ? null : {
       default_action = "Deny"
@@ -22,12 +22,12 @@ locals {
   }
 
   foundry_projects = {
-    main = {
+    main = merge({
       name                       = local.names.project
       display_name               = "Agent Landing Zone (${var.environment})"
       description                = "Foundry project of the Agent Landing Zone, ${var.environment} environment."
-      create_project_connections = false
-    }
+      create_project_connections = local.agent_service_enabled
+    }, local.agent_project_connections)
   }
 
   foundry_model_deployments = {
@@ -54,7 +54,7 @@ module "foundry" {
   location                   = azurerm_resource_group.this.location
   resource_group_resource_id = azurerm_resource_group.this.id
   create_private_endpoints   = false
-  create_byor                = false
+  create_byor                = local.agent_deps_create
   enable_telemetry           = var.enable_telemetry
   tags                       = local.tags
 
@@ -66,6 +66,11 @@ module "foundry" {
   ai_foundry           = local.foundry_account
   ai_projects          = local.foundry_projects
   ai_model_deployments = local.foundry_model_deployments
+
+  # Agent Service dependencies (main.agent-service.tf); empty maps when the switch is off.
+  cosmosdb_definition        = local.agent_cosmos_db_definition
+  ai_search_definition       = local.agent_search_definition
+  storage_account_definition = local.agent_storage_definition
 
   # Azure doesn't keep log_analytics_destination_type on a Foundry account, so every plan shows
   # it being set again (harmless; the module requires a value).

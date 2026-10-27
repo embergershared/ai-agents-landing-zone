@@ -11,6 +11,7 @@ uses the Foundry AVM pattern module `Azure/avm-ptn-aiml-ai-foundry/azurerm` 0.12
 |---|---|---|
 | Core | `main.core.tf` | Resource group; Log Analytics (key auth off); workspace-based Application Insights (key auth off); Key Vault (RBAC authorization, purge protection, 90-day soft delete, diagnostics to Log Analytics). |
 | Foundry | `main.foundry.tf` | Foundry (AI Services) account with key auth off and public endpoint on; one project; the model deployments; diagnostics to Log Analytics; Foundry User for `project_user_principals`. |
+| Agent Service | `main.agent-service.tf` | Behind `deploy_agent_service_dependencies`: Cosmos DB (serverless by default), AI Search and Storage, all with key auth off and public endpoints; the project's connections to them, the account and project capability hosts, and the RBAC the Agent Service needs. |
 
 Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`,
 `aif-alz-dev-ab12`, `kv-alz-dev-ab12`); the project is `proj-<prefix>-<environment>`.
@@ -28,6 +29,10 @@ Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`
 | `log_analytics_retention_days` | 30 | 30 to 730. |
 | `tags` | none | Added to the `workload` and `environment` tags. |
 | `enable_telemetry` | `false` | AVM usage telemetry. |
+| `deploy_agent_service_dependencies` | `true` | Standard agent setup (on) or basic setup (off). |
+| `existing_agent_service_dependencies` | none | Resource IDs of an existing dedicated Cosmos DB, AI Search and Storage to connect instead of creating them. |
+| `agent_cosmos_db_serverless` | `true` | Serverless Cosmos DB; off: provisioned, with `agent_cosmos_db_total_throughput_limit` (-1 or at least 3000 RU/s). |
+| `agent_search_sku`, `agent_search_replica_count` | `basic`, 1 | AI Search for the Agent Service. |
 
 `terraform.tfvars.example` shows them all; copy it to `terraform.tfvars` (gitignored).
 
@@ -59,6 +64,33 @@ Invoke-RestMethod -Method Post -Uri "${endpoint}openai/v1/chat/completions" -Hea
 
 The caller needs the Foundry User role on the account (through `project_user_principals`).
 A call with an `api-key` header gets 401: key authentication is off.
+
+## The Agent Service dependencies switch
+
+| `deploy_agent_service_dependencies` | `existing_agent_service_dependencies` | Result |
+|---|---|---|
+| `true` | not set | Standard setup: new Cosmos DB, AI Search and Storage, connected to the project, with capability hosts and RBAC. |
+| `true` | set | Standard setup on the existing set: connections, capability hosts and RBAC only. |
+| `false` | ignored | Basic setup: agents keep threads and files in Microsoft-managed storage. |
+
+The switch sets the Foundry module's `create_byor`, `ai_foundry.create_ai_agent_service` and
+the project's `create_project_connections` together (see `main.agent-service.tf`).
+`terraform test` covers the three rows. In the standard setup, the Agent Service reaches
+Cosmos DB and Storage on their public endpoints. A policy that turns those endpoints off breaks
+it (see [state-backend.md](state-backend.md)).
+
+Check an agent, with a token for `https://ai.azure.com` (PowerShell):
+```powershell
+$project = terraform output -raw foundry_project_endpoint
+$h = @{ Authorization = "Bearer $(az account get-access-token --resource https://ai.azure.com --query accessToken -o tsv)" }
+$agent = Invoke-RestMethod -Method Post -Uri "$project/assistants?api-version=v1" -Headers $h -ContentType 'application/json' `
+  -Body (@{ model = 'gpt-5.4-mini'; name = 'lz-smoke'; instructions = 'Answer in five words or fewer.' } | ConvertTo-Json)
+$run = Invoke-RestMethod -Method Post -Uri "$project/threads/runs?api-version=v1" -Headers $h -ContentType 'application/json' `
+  -Body (@{ assistant_id = $agent.id; thread = @{ messages = @(@{ role = 'user'; content = 'Say: agents work' }) } } | ConvertTo-Json -Depth 5)
+# When the run's status is completed:
+(Invoke-RestMethod -Uri "$project/threads/$($run.thread_id)/messages?api-version=v1" -Headers $h).data | ForEach-Object { $_.content.text.value }
+Invoke-RestMethod -Method Delete -Uri "$project/assistants/$($agent.id)?api-version=v1" -Headers $h
+```
 
 ## Known plan noise
 
