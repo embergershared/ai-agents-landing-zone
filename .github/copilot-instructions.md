@@ -127,7 +127,7 @@ All work goes through it: features, fixes, optimizations, docs, refactors, and c
   one place.
 - **Logging:** structured logging, never `print`/`console.log` for diagnostics. Standard levels
   only (DEBUG/INFO/WARNING/ERROR); never a custom level like VERBOSE.
-- **Docs:** update the matching docs (README, `docs/`, runbooks), `CHANGELOG.md`, and this file
+- **Docs:** update the matching docs (README, `docs/`, runbooks), `docs/CHANGELOG.md`, and this file
   in the same change when behavior, config, or a convention changes.
 - **Microsoft and Azure docs:** look them up with the Microsoft Learn MCP tools first; say so
   when falling back to another source.
@@ -190,8 +190,9 @@ This repository has no database: the rule applies to any database a later change
 ## This project
 
 Repo wrapper to deploy Azure AI Agents Landing Zone. The [README](../README.md) is a table of
-contents; the root pages (`AGENT-LANDING-ZONE.md`, `IMPLEMENTATIONS.md`, `AGENT-SERVICE.md`,
-`TERRAFORM-PRACTICES.md`, `SOURCES.md`) explain the upstream landing zone;
+contents and, with `LICENSE`, the only file at the root: every other page is in `docs/`. The
+background pages (`docs/AGENT-LANDING-ZONE.md`, `docs/IMPLEMENTATIONS.md`, `docs/AGENT-SERVICE.md`,
+`docs/TERRAFORM-PRACTICES.md`, `docs/SOURCES.md`) explain the upstream landing zone;
 [docs/deployment-plan.md](../docs/deployment-plan.md) has the design, the phases and the
 decisions still open.
 

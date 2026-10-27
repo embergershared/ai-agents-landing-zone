@@ -2,7 +2,7 @@
 
 Facts on this page were read on **2026-10-27** from the sources in [SOURCES.md](SOURCES.md). The
 upstream projects move fast; check the versions there before relying on a detail.
-Back to the [README](README.md).
+Back to the [README](../README.md).
 
 The Agent Landing Zone is Microsoft's reference **workload landing zone** for AI agents on
 Azure: a ready-made, secure foundation on which agents built with **Microsoft Foundry** run.
@@ -69,4 +69,4 @@ The default application topology, `hosted-no-panel`, runs the orchestrator as a 
 agent, has no admin panel, and has no application Cosmos DB. That doesn't remove the Agent
 Service's own Cosmos DB.
 
-This repository groups its own resources differently: see [How this repository deploys it](README.md#how-this-repository-deploys-it).
+This repository groups its own resources differently: see [How this repository deploys it](../README.md#how-this-repository-deploys-it).
