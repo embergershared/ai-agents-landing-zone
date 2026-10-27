@@ -39,3 +39,5 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`main.workload.tf`). One `deploy_workload` switch replaces `deploy_application_platform` and
   `deploy_application_data`, which now fail the plan when set, and Key Vault moved into the workload. `moved` blocks keep
   existing environments' resources in place (#25).
+- The README is a short table of contents; the upstream background moved to root pages: `AGENT-LANDING-ZONE.md`,
+  `IMPLEMENTATIONS.md`, `AGENT-SERVICE.md`, `TERRAFORM-PRACTICES.md` and `SOURCES.md` (#29).
