@@ -45,6 +45,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   page covers Terraform and GitHub Actions only (#37).
 - Only `README.md` and `LICENSE` stay at the root: the background pages, this changelog and the contributing, conduct,
   security and support pages moved to `docs/`, and every link to them points there (#41).
+- The state backend is back on `azurerm` 4.81.0, like the landing zone, and Dependabot no longer proposes `azurerm`
+  major versions: the Foundry module needs 4.x (#45).
 
 ### Removed
 - The template's .NET, Python and database tooling: the CI jobs *.NET build and test*, *Python lint and test* and
