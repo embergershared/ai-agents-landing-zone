@@ -193,6 +193,11 @@ run "github_deployer" {
   }
 
   assert {
+    condition     = endswith(azurerm_role_assignment.deployer_app_settings["dev"].role_definition_id, "5ae67dd6-50cb-40e7-96ff-dc2bfa4b606b") && azurerm_role_assignment.deployer_app_settings["dev"].scope == "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12"
+    error_message = "The pipeline identity can't read and write the environment's settings."
+  }
+
+  assert {
     condition     = azurerm_role_assignment.deployer_state[0].scope == azurerm_storage_account.state.id && azurerm_role_assignment.deployer_state[0].principal_id == "00000000-0000-0000-0000-0000000000d1"
     error_message = "The pipeline identity can't read and write state."
   }

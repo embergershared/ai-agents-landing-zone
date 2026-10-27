@@ -102,6 +102,11 @@ variables {
   deploy_agent_service_dependencies = true
   deploy_application_platform       = true
   deploy_application_data           = true
+  app_settings_writer_principals = {
+    owner = {
+      principal_id = "00000000-0000-0000-0000-0000000000b1"
+    }
+  }
 }
 
 run "platform_and_data_on" {
@@ -138,8 +143,8 @@ run "platform_and_data_on" {
   }
 
   assert {
-    condition     = azurerm_role_assignment.app_config_data_owner_deployer[0].principal_id == "00000000-0000-0000-0000-000000000001"
-    error_message = "The identity running Terraform can't write the settings."
+    condition     = length(azurerm_role_assignment.app_settings_writer) == 1 && azurerm_role_assignment.app_settings_writer["owner"].principal_id == "00000000-0000-0000-0000-0000000000b1" && endswith(azurerm_role_assignment.app_settings_writer["owner"].role_definition_id, "5ae67dd6-50cb-40e7-96ff-dc2bfa4b606b")
+    error_message = "The listed settings writers don't get App Configuration Data Owner."
   }
 
   assert {
