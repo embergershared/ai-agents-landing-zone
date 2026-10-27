@@ -16,6 +16,9 @@ locals {
     app_insights   = "appi-${local.base}-${local.suffix}"
     key_vault      = "kv-${local.base}-${local.suffix}"
     foundry        = "aif-${local.base}-${local.suffix}"
+    agent_cosmos   = "cosmos-${local.base}-${local.suffix}"
+    agent_search   = "srch-${local.base}-${local.suffix}"
+    agent_storage  = "st${var.name_prefix}${var.environment}agent${local.suffix}"
     project        = "proj-${local.base}"
   }
 
