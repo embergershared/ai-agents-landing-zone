@@ -45,3 +45,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   page covers Terraform and GitHub Actions only (#37).
 - Only `README.md` and `LICENSE` stay at the root: the background pages, this changelog and the contributing, conduct,
   security and support pages moved to `docs/`, and every link to them points there (#41).
+
+### Removed
+- The template's .NET, Python and database tooling: the CI jobs *.NET build and test*, *Python lint and test* and
+  *Package age gate* and their detection, `scripts/check_package_age.py`, `scripts/db/sqlite_backup.py`, the
+  commented-out NuGet and Docker Dependabot blocks, and their ignore entries. CI checks Terraform and workflows (#39).
