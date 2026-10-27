@@ -14,11 +14,11 @@ Foundry AVM pattern module ([why](IMPLEMENTATIONS.md)).
 
 ## How this repository deploys it
 
-| Group | What it deploys | Switch |
-|---|---|---|
-| 1. Foundry essentials | Resource group, monitoring, Foundry account, project and models | always on |
-| 2. Agent Service dependencies | The Agent Service's own Cosmos DB, AI Search and Storage | `deploy_agent_service_dependencies` |
-| 3. Workload | App Configuration, Container Registry, Container Apps, Key Vault, a second AI Search and Storage | `deploy_workload` |
+| Group | What it deploys | Why | Switch |
+|---|---|---|---|
+| 1. Foundry essentials | Resource group, monitoring, Foundry account, project and models | The minimum to call models and build agents in a Foundry project, with logs and traces for every resource | always on |
+| 2. Agent Service dependencies | The Agent Service's own Cosmos DB, AI Search and Storage | The *standard* agent setup: agents' threads, vector stores and files stay in your own resources instead of Microsoft-managed storage | `deploy_agent_service_dependencies` |
+| 3. Workload | App Configuration, Container Registry, Container Apps, Key Vault, a second AI Search and Storage | What applications built on the landing zone need to run: their settings, images, hosting, secrets, and their own index and documents, kept apart from the Agent Service's | `deploy_workload` |
 
 It is infrastructure only; the Agent Application is not deployed by Terraform.
 
