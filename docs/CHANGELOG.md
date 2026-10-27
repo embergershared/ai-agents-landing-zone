@@ -43,6 +43,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `IMPLEMENTATIONS.md`, `AGENT-SERVICE.md`, `TERRAFORM-PRACTICES.md` and `SOURCES.md` (#29).
 - `docs/` holds only what this repository uses: the database and repo-template pages are removed, and the supply-chain
   page covers Terraform and GitHub Actions only (#37).
+- Only `README.md` and `LICENSE` stay at the root: the background pages, this changelog and the contributing, conduct,
+  security and support pages moved to `docs/`, and every link to them points there (#41).
 
 ### Removed
 - The template's .NET, Python and database tooling: the CI jobs *.NET build and test*, *Python lint and test* and
