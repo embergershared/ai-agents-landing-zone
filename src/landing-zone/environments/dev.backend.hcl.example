@@ -1,0 +1,6 @@
+# Copy to dev.backend.hcl (gitignored) with the values of the state-backend's backend_config output.
+resource_group_name  = "rg-<prefix>-tfstate-<suffix>"
+storage_account_name = "st<prefix>tfstate<suffix>"
+container_name       = "tfstate-dev"
+key                  = "landing-zone.tfstate"
+use_azuread_auth     = true
