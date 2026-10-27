@@ -26,6 +26,8 @@ artifacts/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+*.tfplan
+*.backend.hcl
 crash.log
 crash.*.log
 override.tf
