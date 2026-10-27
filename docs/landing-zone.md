@@ -13,8 +13,8 @@ other: either can be on or off alone.
 
 | Group | File | Switch | Resources |
 |---|---|---|---|
-| 1. Foundry essentials | `main.foundry.tf` | none: always | Resource group; Log Analytics (key auth off); workspace-based Application Insights (key auth off); Foundry (AI Services) account with key auth off and public endpoint on; one project; the model deployments; diagnostics to Log Analytics; Foundry User for `project_user_principals`. |
-| 2. Agent Service dependencies | `main.agent-service.tf` | `deploy_agent_service_dependencies` | Cosmos DB (serverless by default), AI Search and Storage, all with key auth off and public endpoints; the project's connections to them, the account and project capability hosts, and the RBAC the Agent Service needs. The Foundry module creates Cosmos DB and Storage. AI Search is created next to it, so it can live in `search_location`, and the project connects to it as an existing resource. |
+| 1. Foundry essentials | `main.foundry.tf` | none: always | Resource group; Log Analytics (key auth off); workspace-based Application Insights (key auth off); Foundry (AI Services) account with key auth off and public endpoint on; one project; the model deployments; diagnostics to Log Analytics; Foundry User on the account for `project_user_principals` (decision [0001](decisions/0001-standard-agent-setup-gaps.md)); the project's Application Insights connection for agent traces, through the project's managed identity (Monitoring Metrics Publisher), and Log Analytics Reader on Application Insights for `project_user_principals` to see the traces. |
+| 2. Agent Service dependencies | `main.agent-service.tf` | `deploy_agent_service_dependencies` | Cosmos DB (serverless by default), AI Search and Storage, all with key auth off and public endpoints; the project's connections to them, the account and project capability hosts, and the RBAC the Agent Service needs, plus Storage Account Contributor for the project on the storage account (new or existing). No Key Vault: see decision [0001](decisions/0001-standard-agent-setup-gaps.md). The Foundry module creates Cosmos DB and Storage. AI Search is created next to it, so it can live in `search_location`, and the project connects to it as an existing resource. |
 | 3. Workload | `main.workload.tf` | `deploy_workload` | App Configuration (key auth off) holding the landing zone's endpoints and names, labeled with the environment; Container Registry (no admin user, no anonymous pull); Container Apps environment (logs to Log Analytics through a diagnostic setting); the applications' user-assigned identity, with App Configuration Data Reader, AcrPull and Foundry User; Key Vault for the applications' secrets (RBAC authorization, purge protection, 90-day soft delete, diagnostics to Log Analytics); the applications' own AI Search and Storage (key auth off), with Search Index Data Contributor and Storage Blob Data Contributor for the applications' identity. |
 
 Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`,
@@ -29,7 +29,7 @@ Names follow `<abbreviation>-<prefix>-<environment>-<suffix>` (`rg-alz-dev-ab12`
 | `name_prefix` | `alz` | 3 to 7 lowercase letters or digits. |
 | `environment` | `dev` | Part of every name. |
 | `model_deployments` | `gpt-5.4-mini` 2026-03-17, GlobalStandard, 10K TPM | Deployments by name. |
-| `project_user_principals` | none | Entra groups that use the project (Foundry User role). |
+| `project_user_principals` | none | Entra groups that use the project: Foundry User on the account, Log Analytics Reader on Application Insights. |
 | `allowed_ip_ranges` | none | Empty means all networks; Entra ID is always required. |
 | `log_analytics_retention_days` | 30 | 30 to 730. |
 | `tags` | none | Added to the `workload` and `environment` tags. |

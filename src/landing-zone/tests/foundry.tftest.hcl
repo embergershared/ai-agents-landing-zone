@@ -23,6 +23,12 @@ mock_provider "azurerm" {
       id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.OperationalInsights/workspaces/log-alz-dev-ab12"
     }
   }
+
+  mock_resource "azurerm_application_insights" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.Insights/components/appi-alz-dev-ab12"
+    }
+  }
 }
 
 mock_provider "random" {
@@ -43,6 +49,12 @@ mock_provider "time" {
   override_during = plan
 }
 
+# The project's tracing connection: azapi has no mock (the module's ephemeral resources need it).
+override_resource {
+  target          = azapi_resource.app_insights_connection
+  override_during = plan
+}
+
 # A local terraform.tfvars is loaded by terraform test too: pin the inputs the runs depend on.
 variables {
   project_user_principals           = {}
@@ -58,6 +70,15 @@ override_module {
   outputs = {
     ai_foundry_name = "aif-alz-dev-ab12"
     ai_foundry_id   = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.CognitiveServices/accounts/aif-alz-dev-ab12"
+    ai_foundry_project_id = {
+      main = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.CognitiveServices/accounts/aif-alz-dev-ab12/projects/proj-alz-dev"
+    }
+    ai_foundry_project_system_identity_principal_id = {
+      main = "00000000-0000-0000-0000-00000000000b"
+    }
+    storage_account_id = {
+      agent = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/rg-alz-dev-ab12/providers/Microsoft.Storage/storageAccounts/stalzdevagentab12"
+    }
   }
 }
 
@@ -87,6 +108,21 @@ run "defaults" {
   assert {
     condition     = length(azurerm_search_service.agent) == 0 && output.agent_service_setup == "basic"
     error_message = "With the Agent Service dependencies off, their AI Search is still planned."
+  }
+
+  assert {
+    condition     = azapi_resource.app_insights_connection.body.properties.category == "AppInsights" && azapi_resource.app_insights_connection.body.properties.authType == "ProjectManagedIdentity" && azapi_resource.app_insights_connection.body.properties.target == azurerm_application_insights.this.id && endswith(azapi_resource.app_insights_connection.parent_id, "/projects/proj-alz-dev")
+    error_message = "The project has no Application Insights connection through its managed identity."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.project_trace_ingestion.scope == azurerm_application_insights.this.id && azurerm_role_assignment.project_trace_ingestion.principal_id == "00000000-0000-0000-0000-00000000000b" && endswith(azurerm_role_assignment.project_trace_ingestion.role_definition_id, "3913510d-42f4-4e42-8a64-420c390055eb")
+    error_message = "The project identity can't publish traces to Application Insights (Monitoring Metrics Publisher)."
+  }
+
+  assert {
+    condition     = length(azurerm_role_assignment.project_storage_account_contributor) == 0 && length(azurerm_role_assignment.project_user_traces) == 0
+    error_message = "With the switch off and no project users, a storage or trace reader role is still planned."
   }
 
   assert {
@@ -140,6 +176,11 @@ run "ip_rules_and_project_users" {
   assert {
     condition     = local.foundry_account.role_assignments["foundry-user-deployers"].principal_id == "00000000-0000-0000-0000-00000000000a" && local.foundry_account.role_assignments["foundry-user-deployers"].principal_type == "Group" && endswith(local.foundry_account.role_assignments["foundry-user-deployers"].role_definition_id_or_name, "53ca6127-db72-4b80-b1b0-d745d6d5456d")
     error_message = "A project user group does not get the Foundry User role."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.project_user_traces["deployers"].scope == azurerm_application_insights.this.id && endswith(azurerm_role_assignment.project_user_traces["deployers"].role_definition_id, "73c42c96-874c-492b-b04d-ab87d138a893")
+    error_message = "A project user group can't read traces (Log Analytics Reader on Application Insights)."
   }
 }
 
