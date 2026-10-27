@@ -140,16 +140,34 @@ variable "agent_search_replica_count" {
   default     = 1
 }
 
+variable "deploy_workload" {
+  type        = bool
+  description = "Deploy the workload group: App Configuration with the landing zone's endpoints, Container Registry, Container Apps environment, the applications' managed identity, Key Vault, and the applications' own AI Search and Storage (separate from the Agent Service's)."
+  default     = true
+}
+
+# Replaced by deploy_workload. Kept so that a tfvars file still setting them fails the plan
+# instead of being ignored with a warning.
 variable "deploy_application_platform" {
   type        = bool
-  description = "Deploy the application platform: App Configuration with the landing zone's endpoints, Container Registry, Container Apps environment and the applications' managed identity."
-  default     = true
+  description = "Removed: use deploy_workload."
+  default     = null
+
+  validation {
+    condition     = var.deploy_application_platform == null
+    error_message = "deploy_application_platform is replaced by deploy_workload, one switch for the whole workload group. Remove it from the tfvars file."
+  }
 }
 
 variable "deploy_application_data" {
   type        = bool
-  description = "Deploy the applications' own AI Search and Storage (separate from the Agent Service's)."
-  default     = true
+  description = "Removed: use deploy_workload."
+  default     = null
+
+  validation {
+    condition     = var.deploy_application_data == null
+    error_message = "deploy_application_data is replaced by deploy_workload, one switch for the whole workload group. Remove it from the tfvars file."
+  }
 }
 
 variable "app_configuration_sku" {

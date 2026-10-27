@@ -24,8 +24,8 @@ output "model_deployment_names" {
 }
 
 output "key_vault_name" {
-  description = "Key Vault of the landing zone (RBAC authorization)."
-  value       = azurerm_key_vault.this.name
+  description = "Key Vault for the workload's secrets (RBAC authorization), when the workload is deployed."
+  value       = local.workload ? azurerm_key_vault.this[0].name : null
 }
 
 output "log_analytics_workspace_id" {
@@ -55,12 +55,12 @@ output "agent_service_dependencies" {
 
 output "app_configuration_endpoint" {
   description = "App Configuration endpoint; the settings are labeled with the environment."
-  value       = local.app_platform ? azurerm_app_configuration.this[0].endpoint : null
+  value       = local.workload ? azurerm_app_configuration.this[0].endpoint : null
 }
 
 output "app_identity" {
   description = "User-assigned identity the applications run as."
-  value = local.app_platform ? {
+  value = local.workload ? {
     resource_id  = azurerm_user_assigned_identity.app[0].id
     client_id    = azurerm_user_assigned_identity.app[0].client_id
     principal_id = azurerm_user_assigned_identity.app[0].principal_id
@@ -69,17 +69,17 @@ output "app_identity" {
 
 output "container_registry_login_server" {
   description = "Container Registry login server."
-  value       = local.app_platform ? azurerm_container_registry.this[0].login_server : null
+  value       = local.workload ? azurerm_container_registry.this[0].login_server : null
 }
 
 output "container_app_environment_id" {
   description = "Container Apps environment."
-  value       = local.app_platform ? azurerm_container_app_environment.this[0].id : null
+  value       = local.workload ? azurerm_container_app_environment.this[0].id : null
 }
 
 output "app_data" {
   description = "The applications' AI Search and Storage."
-  value = local.app_data ? {
+  value = local.workload ? {
     search_name          = azurerm_search_service.app[0].name
     storage_account_name = azurerm_storage_account.app[0].name
   } : null

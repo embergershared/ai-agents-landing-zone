@@ -35,12 +35,12 @@ agent_search_replica_count        = 1
 #   storage_account_resource_id = "/subscriptions/<subscription-id>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<name>"
 # }
 
-# Application platform and data (decision D2).
-deploy_application_platform = true
-deploy_application_data     = true
-app_configuration_sku       = "standard"
-container_registry_sku      = "Basic"
-app_search_sku              = "basic"
+# Workload group (decision D2): App Configuration, Container Registry, Container Apps, Key Vault,
+# the applications' AI Search and Storage.
+deploy_workload        = true
+app_configuration_sku  = "standard"
+container_registry_sku = "Basic"
+app_search_sku         = "basic"
 
 # People who run Terraform from a workstation: App Configuration Data Owner, to write the settings.
 app_settings_writer_principals = {

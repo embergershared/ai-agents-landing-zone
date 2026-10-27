@@ -286,8 +286,11 @@ Our target is a deployment that:
 
 The upstream landing zone module can't do the first point, so this repository builds its own
 Terraform root module from AVM modules, centered on the Foundry pattern module with
-`create_private_endpoints = false`. It is infrastructure only; the Agent Application is
-not deployed by Terraform. The phases, decisions and risks are in
+`create_private_endpoints = false`. It deploys three groups of resources: **Foundry
+essentials** (account, project, models and what they need, always on), the **Agent Service
+dependencies** (switchable) and the **workload** (Container Registry, Container Apps, a
+second AI Search and the like, switchable). It is infrastructure only; the Agent Application
+is not deployed by Terraform. The groups, phases, decisions and risks are in
 [docs/deployment-plan.md](docs/deployment-plan.md).
 
 ## Sources

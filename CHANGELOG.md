@@ -29,3 +29,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - The agent rules and `docs/` describe this Terraform repository and no longer refer to the removed .NET and Python
   files (#6).
+- The landing zone's resources are in three groups, one file each: Foundry essentials (`main.foundry.tf`, now with the
+  resource group, Log Analytics and Application Insights), the Agent Service dependencies, and the workload
+  (`main.workload.tf`). One `deploy_workload` switch replaces `deploy_application_platform` and
+  `deploy_application_data`, which now fail the plan when set, and Key Vault moved into the workload. `moved` blocks keep
+  existing environments' resources in place (#25).
