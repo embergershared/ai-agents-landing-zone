@@ -80,7 +80,7 @@ module "foundry" {
   source  = "Azure/avm-ptn-aiml-ai-foundry/azurerm"
   version = "0.12.0"
 
-  base_name                  = var.name_prefix
+  base_name                  = local.foundry_base_name
   location                   = azurerm_resource_group.this.location
   resource_group_resource_id = azurerm_resource_group.this.id
   create_private_endpoints   = false
@@ -148,6 +148,16 @@ resource "azapi_resource" "app_insights_connection" {
       metadata = {
         ApiType    = "Azure"
         ResourceId = azurerm_application_insights.this.id
+      }
+    }
+  }
+  # The API requires the connection string in the metadata. sensitive_body is write-only and
+  # merge-patched into body, so the value stays out of this resource's state and the plans. No
+  # sensitive_body_version: a versioned path is only sent when its version changes.
+  sensitive_body = {
+    properties = {
+      metadata = {
+        ApplicationInsightsConnectionString = azurerm_application_insights.this.connection_string
       }
     }
   }

@@ -175,7 +175,7 @@ needs 2; 6 comes last.
 | D4 | Environments and subscriptions (e.g. dev and prod, one subscription each) | One state and one `tfvars` per environment. |
 | D5 | Who deploys, and with which rights? | A pipeline identity with Contributor and Role Based Access Administrator (limited to the roles the landing zone grants) on the target resource group or subscription. Contributor alone can't create the role assignments. |
 | D6 | Are IP allow lists wanted on the public endpoints from day one? | Start with them empty in dev; decide per service for prod. |
-| D7 | Naming convention | AVM naming with a `name_prefix` and short random suffix, like the upstream modules; or the customer's own convention if there is one. |
+| D7 | Naming convention | AVM naming with a `name_prefix` and short random suffix, like the upstream modules; or the customer's own convention if there is one. **Since #50:** any `name_prefix` and `environment` are accepted, and each name is made compliant with its type's rules (lowercase, single hyphens, prefix shortened first to fit the length); see [landing-zone.md](landing-zone.md#compliant-names-from-any-prefix-and-environment). |
 | D8 | Should the three groups live in separate resource groups, or separate Terraform states? | **Decided (2026-10-27): one resource group and one Terraform state for all three groups.** Why: the Foundry module creates group 2 in the same resource group as the Foundry account, and one state keeps the outputs between groups simple. If the workload must later be owned or retired apart, move group 3 to its own resource group first; group 2 can only move out by creating it outside the module and passing it in through `existing_agent_service_dependencies`. |
 
 ## 5. Risks

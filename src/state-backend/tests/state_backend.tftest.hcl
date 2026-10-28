@@ -130,11 +130,30 @@ run "environments_contributors_and_ip_rules" {
   }
 }
 
+run "long_prefix" {
+  command = plan
+
+  variables {
+    name_prefix     = "Swec S3 AILZ agent_svc"
+    github_deployer = null
+  }
+
+  assert {
+    condition     = azurerm_storage_account.state.name == "stswecs3ailzatfstateab12" && can(regex("^[a-z0-9]{3,24}$", azurerm_storage_account.state.name))
+    error_message = "The storage account name is not shortened to 24 lowercase letters or digits."
+  }
+
+  assert {
+    condition     = azurerm_resource_group.state.name == "rg-swec-s3-ailz-agent-svc-tfstate-ab12"
+    error_message = "The resource group name is not made compliant from the prefix."
+  }
+}
+
 run "invalid_prefix" {
   command = plan
 
   variables {
-    name_prefix = "Not_Valid"
+    name_prefix = "a_"
   }
 
   expect_failures = [var.name_prefix]

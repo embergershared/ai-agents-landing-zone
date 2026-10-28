@@ -6,23 +6,23 @@ variable "location" {
 
 variable "name_prefix" {
   type        = string
-  description = "Short prefix of every resource name (3 to 7 lowercase letters or digits)."
+  description = "Prefix of every resource name. Names keep its letters and digits in lowercase, turn other characters into hyphens, and shorten it to fit each type's maximum length."
   default     = "alz"
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9]{2,6}$", var.name_prefix))
-    error_message = "name_prefix is 3 to 7 lowercase letters or digits, starting with a letter."
+    condition     = length(regexall("[a-zA-Z0-9]", var.name_prefix)) >= 3
+    error_message = "name_prefix needs at least 3 letters or digits."
   }
 }
 
 variable "environment" {
   type        = string
-  description = "Environment name, part of every resource name (dev, test, prod)."
+  description = "Environment name (dev, test, prod), part of every resource name, made compliant like name_prefix. Tags and App Configuration labels use it as written."
   default     = "dev"
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9]{1,5}$", var.environment))
-    error_message = "environment is 2 to 6 lowercase letters or digits, starting with a letter."
+    condition     = length(regexall("[a-zA-Z0-9]", var.environment)) >= 2
+    error_message = "environment needs at least 2 letters or digits."
   }
 }
 

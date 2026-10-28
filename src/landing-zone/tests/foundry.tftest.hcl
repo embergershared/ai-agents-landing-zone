@@ -95,6 +95,28 @@ run "defaults" {
     error_message = "Foundry account or project name does not follow the naming convention."
   }
 
+  # Short plain values must give the names existing environments already have.
+  assert {
+    condition = local.names == {
+      resource_group = "rg-alz-dev-ab12"
+      log_analytics  = "log-alz-dev-ab12"
+      app_insights   = "appi-alz-dev-ab12"
+      key_vault      = "kv-alz-dev-ab12"
+      foundry        = "aif-alz-dev-ab12"
+      agent_cosmos   = "cosmos-alz-dev-ab12"
+      agent_search   = "srch-alz-dev-ab12"
+      agent_storage  = "stalzdevagentab12"
+      project        = "proj-alz-dev"
+      app_config     = "appcs-alz-dev-ab12"
+      app_registry   = "cralzdevab12"
+      app_env        = "cae-alz-dev-ab12"
+      app_identity   = "id-alz-dev-app"
+      app_search     = "srch-alz-dev-app-ab12"
+      app_storage    = "stalzdevappab12"
+    } && local.foundry_base_name == "alz"
+    error_message = "With name_prefix alz and environment dev, a name differs from the names before compliant naming."
+  }
+
   assert {
     condition     = azurerm_log_analytics_workspace.this.local_authentication_enabled == false && azurerm_application_insights.this.local_authentication_enabled == false
     error_message = "Log Analytics or Application Insights accepts key authentication."
@@ -184,11 +206,67 @@ run "ip_rules_and_project_users" {
   }
 }
 
+run "long_names" {
+  command = plan
+
+  variables {
+    name_prefix = "swec-s3-ailz-agent-svc"
+    environment = "fullrun"
+  }
+
+  assert {
+    condition = alltrue([for k, n in local.names : length(n) <= local.name_specs[k].max && can(regex(
+      local.name_specs[k].compact ? "^[a-z][a-z0-9]*$" : "^[a-z][a-z0-9]*(-[a-z0-9]+)*$", n
+    ))])
+    error_message = "A name is longer than its type allows, or has characters or hyphens it doesn't allow."
+  }
+
+  # The examples in docs/landing-zone.md, "Compliant names from any prefix and environment".
+  assert {
+    condition     = local.names.key_vault == "kv-swec-s3-fullrun-ab12" && local.names.agent_storage == "stswecs3fullrunagentab12" && local.names.app_storage == "stswecs3aifullrunappab12"
+    error_message = "A shortened name doesn't keep the environment and shorten the prefix."
+  }
+
+  assert {
+    condition     = local.names.app_registry == "crswecs3ailzagentsvcfullrunab12" && local.names.agent_cosmos == "cosmos-swec-s3-ailz-agent-svc-fullrun-ab12" && local.names.app_search == "srch-swec-s3-ailz-agent-svc-fullrun-app-ab12"
+    error_message = "A name that fits its type's maximum length is shortened or loses the wrong characters."
+  }
+
+  assert {
+    condition     = local.names.project == "proj-swec-s3-ailz-agent-svc-fullrun" && local.names.resource_group == "rg-swec-s3-ailz-agent-svc-fullrun-ab12"
+    error_message = "A name that fits is shortened."
+  }
+
+  assert {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,7}[a-z0-9]$", local.foundry_base_name))
+    error_message = "The Foundry module's base_name doesn't meet its rule."
+  }
+}
+
+run "non_compliant_characters" {
+  command = plan
+
+  variables {
+    name_prefix = "Contoso_AI  Lab"
+    environment = "QA.1"
+  }
+
+  assert {
+    condition     = local.names.resource_group == "rg-contoso-ai-lab-qa-1-ab12" && local.names.app_storage == "stcontosoailabqa1appab12"
+    error_message = "Upper case, underscores, spaces or periods are not turned into compliant names."
+  }
+
+  assert {
+    condition     = local.tags.environment == "QA.1"
+    error_message = "The environment tag doesn't keep the environment as written."
+  }
+}
+
 run "invalid_prefix" {
   command = plan
 
   variables {
-    name_prefix = "toolongprefix"
+    name_prefix = "a_b"
   }
 
   expect_failures = [var.name_prefix]

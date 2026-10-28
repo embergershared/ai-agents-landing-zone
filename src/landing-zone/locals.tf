@@ -1,35 +1,76 @@
 # Names follow <abbreviation>-<prefix>-<environment>-<suffix> (decision D7). The random suffix
 # keeps global names unique and lets a soft-deleted Foundry account or Key Vault keep its name.
 resource "random_string" "suffix" {
-  length  = 4
+  length  = local.suffix_length
   special = false
   upper   = false
 }
 
 locals {
-  suffix = random_string.suffix.result
+  suffix        = random_string.suffix.result
+  suffix_length = 4
 
   # AI Search can run in another region than the rest (search_location).
   search_location = coalesce(var.search_location, var.location)
-  base            = "${var.name_prefix}-${var.environment}"
 
-  names = {
-    resource_group = "rg-${local.base}-${local.suffix}"
-    log_analytics  = "log-${local.base}-${local.suffix}"
-    app_insights   = "appi-${local.base}-${local.suffix}"
-    key_vault      = "kv-${local.base}-${local.suffix}"
-    foundry        = "aif-${local.base}-${local.suffix}"
-    agent_cosmos   = "cosmos-${local.base}-${local.suffix}"
-    agent_search   = "srch-${local.base}-${local.suffix}"
-    agent_storage  = "st${var.name_prefix}${var.environment}agent${local.suffix}"
-    project        = "proj-${local.base}"
-    app_config     = "appcs-${local.base}-${local.suffix}"
-    app_registry   = "cr${var.name_prefix}${var.environment}${local.suffix}"
-    app_env        = "cae-${local.base}-${local.suffix}"
-    app_identity   = "id-${local.base}-app"
-    app_search     = "srch-${local.base}-app-${local.suffix}"
-    app_storage    = "st${var.name_prefix}${var.environment}app${local.suffix}"
+  # Name parts made compliant from the variables: lowercase letters and digits, any other run of
+  # characters becomes one hyphen, and no hyphen at either end. Short plain values pass unchanged.
+  name_prefix      = trim(replace(lower(var.name_prefix), "/[^a-z0-9]+/", "-"), "-")
+  name_environment = trim(replace(lower(var.environment), "/[^a-z0-9]+/", "-"), "-")
+
+  # When a name is too long, the prefix part is shortened, down to this many characters, before
+  # the environment part.
+  name_min_prefix = 3
+
+  # Per name: head and tail around <prefix><separator><environment>, whether the random suffix
+  # ends it, the type's maximum length, and compact for types without hyphens (no separator).
+  name_specs = {
+    resource_group = { head = "rg-", tail = "", suffix = true, max = 90, compact = false }
+    log_analytics  = { head = "log-", tail = "", suffix = true, max = 63, compact = false }
+    app_insights   = { head = "appi-", tail = "", suffix = true, max = 260, compact = false }
+    key_vault      = { head = "kv-", tail = "", suffix = true, max = 24, compact = false }
+    foundry        = { head = "aif-", tail = "", suffix = true, max = 64, compact = false }
+    agent_cosmos   = { head = "cosmos-", tail = "", suffix = true, max = 44, compact = false }
+    agent_search   = { head = "srch-", tail = "", suffix = true, max = 60, compact = false }
+    agent_storage  = { head = "st", tail = "agent", suffix = true, max = 24, compact = true }
+    project        = { head = "proj-", tail = "", suffix = false, max = 64, compact = false }
+    app_config     = { head = "appcs-", tail = "", suffix = true, max = 50, compact = false }
+    app_registry   = { head = "cr", tail = "", suffix = true, max = 50, compact = true }
+    app_env        = { head = "cae-", tail = "", suffix = true, max = 60, compact = false }
+    app_identity   = { head = "id-", tail = "-app", suffix = false, max = 128, compact = false }
+    app_search     = { head = "srch-", tail = "-app", suffix = true, max = 60, compact = false }
+    app_storage    = { head = "st", tail = "app", suffix = true, max = 24, compact = true }
   }
+
+  name_parts = { for k, s in local.name_specs : k => {
+    prefix = s.compact ? replace(local.name_prefix, "-", "") : local.name_prefix
+    env    = s.compact ? replace(local.name_environment, "-", "") : local.name_environment
+    sep    = s.compact ? "" : "-"
+    # Characters left for <prefix><separator><environment>.
+    budget = s.max - length(s.head) - length(s.tail) - (s.suffix ? local.suffix_length + (s.compact ? 0 : 1) : 0)
+  } }
+
+  name_env_parts = { for k, p in local.name_parts : k =>
+    trim(substr(p.env, 0, max(1, min(length(p.env), p.budget - length(p.sep) - min(length(p.prefix), local.name_min_prefix)))), "-")
+  }
+
+  name_prefix_parts = { for k, p in local.name_parts : k =>
+    trim(substr(p.prefix, 0, max(1, p.budget - length(p.sep) - length(local.name_env_parts[k]))), "-")
+  }
+
+  names = { for k, s in local.name_specs : k => join("", [
+    s.head,
+    local.name_prefix_parts[k],
+    local.name_parts[k].sep,
+    local.name_env_parts[k],
+    s.tail,
+    s.suffix ? "${local.name_parts[k].sep}${local.suffix}" : "",
+  ]) }
+
+  # The Foundry module's base_name (its capability host names): 3 to 9 lowercase letters, digits
+  # or hyphens, starting and ending with a letter or digit.
+  foundry_base_name_max = 9
+  foundry_base_name     = trim(substr(local.name_prefix, 0, local.foundry_base_name_max), "-")
 
   tags = merge({ workload = "agent-landing-zone", environment = var.environment }, var.tags)
 

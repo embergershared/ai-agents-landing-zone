@@ -31,7 +31,7 @@ locals {
 resource "azurerm_user_assigned_identity" "deployer" {
   count = local.deployer ? 1 : 0
 
-  name                = "id-${var.name_prefix}-github-deployer"
+  name                = local.deployer_name
   resource_group_name = azurerm_resource_group.state.name
   location            = azurerm_resource_group.state.location
   tags                = local.tags

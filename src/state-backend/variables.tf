@@ -6,12 +6,12 @@ variable "location" {
 
 variable "name_prefix" {
   type        = string
-  description = "Short prefix of every resource name (lowercase letters and digits)."
+  description = "Prefix of every resource name. Names keep its letters and digits in lowercase, turn other characters into hyphens, and shorten it to fit each type's maximum length."
   default     = "alz"
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9]{1,7}$", var.name_prefix))
-    error_message = "name_prefix is 2 to 8 lowercase letters or digits, starting with a letter."
+    condition     = length(regexall("[a-zA-Z0-9]", var.name_prefix)) >= 2
+    error_message = "name_prefix needs at least 2 letters or digits."
   }
 }
 

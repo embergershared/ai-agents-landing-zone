@@ -27,23 +27,26 @@ az account show --query "{subscription:name, tenant:tenantId, user:user.name}" -
 
 ## 2. Deploy
 
-### 2.1 State backend (once per subscription, again for each new environment)
+### 2.1 State backend (once per environment)
 
-Each environment needs its state container: list every environment in `environments` in the
-bootstrap's `terraform.tfvars`. To add one later, add its name there and run these steps again.
+Each environment needs its state container. The script reads `location`, `name_prefix`, `tags`
+and `allowed_ip_ranges` from the environment's `environments/<env>.tfvars`, creates or updates
+the backend for that `name_prefix` with a `tfstate-<env>` container, and writes
+`environments/<env>.backend.hcl`. Environments with the same `name_prefix` share one backend.
 
 ```powershell
-Set-Location src/state-backend
-Copy-Item terraform.tfvars.example terraform.tfvars   # gitignored: set environments, tags, github_deployer
-terraform init -backend-config="path=$HOME/.terraform-state/ai-agents-landing-zone/state-backend/terraform.tfstate"
-terraform plan -out bootstrap.tfplan
-terraform apply bootstrap.tfplan
-terraform output backend_config
-az storage account show -n (terraform output -raw storage_account_name) --query publicNetworkAccess -o tsv   # must be Enabled
-Set-Location ../..
+$envName = 'dev'
+./scripts/New-StateBackend.ps1 -Environment $envName -PlanOnly   # dry run: shows the plan, changes nothing
+./scripts/New-StateBackend.ps1 -Environment $envName             # asks before it applies
 ```
 
-Back up the folder that holds the bootstrap state (`$HOME/.terraform-state/...`).
+It stops before applying when the plan would delete or replace anything, and fails when the
+storage account's public network access is off. The pipeline identity (`github_deployer`) and
+the other bootstrap-only values still come from `src/state-backend/terraform.tfvars`
+(gitignored, copied from its `.example`). The manual commands are in
+[state-backend.md](state-backend.md#bootstrap-once-per-subscription-and-name-prefix).
+
+Back up the folder that holds the bootstrap states (`$HOME/.terraform-state/...`).
 
 ### 2.2 The environment
 
@@ -54,14 +57,15 @@ Set-Location src/landing-zone
 $envName = 'dev'
 # environments/<env>.tfvars holds the committed values. For a new environment, copy dev.tfvars,
 # set environment = "<env>", and review region, search_location, switches and tags.
-# <env>.backend.hcl (gitignored): copy the example, fill it from backend_config, and set
-# container_name = "tfstate-<env>".
-Copy-Item environments/dev.backend.hcl.example "environments/$envName.backend.hcl"
+# <env>.backend.hcl (gitignored) was written by scripts/New-StateBackend.ps1 (2.1).
 # -reconfigure: needed when this folder was initialized for another environment before
 terraform init -reconfigure -backend-config="environments/$envName.backend.hcl"
-$env:TF_VAR_project_user_principals = '{"users":{"principal_id":"<entra-group-object-id>","principal_type":"Group"}}'
+# Set both in the same window before every plan, with the same values each time: a plan without
+# them removes the roles they gave. ConvertTo-Json builds the JSON; a bare object ID fails.
+$env:TF_VAR_project_user_principals = @{ users = @{ principal_id = '<entra-group-object-id>'; principal_type = 'Group' } } | ConvertTo-Json -Compress
 # You write the App Configuration settings: list yourself (az ad signed-in-user show --query id -o tsv)
-$env:TF_VAR_app_settings_writer_principals = '{"me":{"principal_id":"<your-entra-object-id>","principal_type":"User"}}'
+$env:TF_VAR_app_settings_writer_principals = @{ me = @{ principal_id = '<your-entra-object-id>'; principal_type = 'User' } } | ConvertTo-Json -Compress
+$env:TF_VAR_project_user_principals; $env:TF_VAR_app_settings_writer_principals   # both show a principal_id
 terraform plan -var-file="environments/$envName.tfvars" -out "$envName.tfplan"
 ```
 
@@ -146,7 +150,8 @@ Common changes:
    name has a random suffix, so a redeploy doesn't collide with it.
 5. Remove the environment from the pipeline: its `github_deployer.environments` entry (apply the
    bootstrap again), its `PROJECT_USER_PRINCIPALS_<ENV>` and `APP_SETTINGS_WRITERS_<ENV>`
-   secrets, its GitHub environment, and its state container (from `environments` in the bootstrap).
+   secrets, its GitHub environment, and its state container (a manual bootstrap run without
+   it in `environments`: [state-backend.md](state-backend.md#remove-an-environments-container)).
 
 Retire the state backend only after every environment is gone ([state-backend.md](state-backend.md#retire)).
 
@@ -159,7 +164,9 @@ Retire the state backend only after every environment is gone ([state-backend.md
 | `AADSTS700213: No matching federated identity record` in the deploy workflow | The repository sends immutable OIDC subjects: set `github_deployer.subject_prefix` ([ci-cd.md](ci-cd.md#deploys)). |
 | `AuthorizationFailed` writing a role assignment from the pipeline | The landing zone grants a role that isn't in `deployer_assignable_role_ids`. Add it, and apply the bootstrap. |
 | 403 on App Configuration keys ("while checking for key ... existence"), in a plan or right after an apply | The caller's App Configuration Data Owner role hasn't reached the data plane yet. It took about 40 minutes for a new pipeline identity here, with calls failing and passing in turns meanwhile. Wait, then run again. People running Terraform from a workstation must be in `app_settings_writer_principals`. |
-| Azure CLI: `Continuous access evaluation ... InteractionRequired` | The sign-in is too old for Microsoft Graph. Run `az login` again. Terraform's management calls don't need Graph. |
+| The apply of the workload hangs on `azurerm_app_configuration_key.settings` ("Still creating"), then fails after 45 minutes: `read permission to be propagated ... last state: 'Forbidden'` | Nobody has App Configuration Data Owner: the plan was made without `TF_VAR_app_settings_writer_principals` (an Owner on the subscription has no data-plane right). A saved plan keeps the values it was made with: set the variable (2.2), plan again, apply. |
+| Plan: `Missing required argument ... principal_id`, or `Variables not allowed` on a `<value for var...>` | A `TF_VAR_...principals` variable is empty (an `az ad` lookup failed) or a bare object ID. Build it with `ConvertTo-Json` as in 2.2 and check it before planning. |
+| Azure CLI: `Continuous access evaluation ... InteractionRequired` (`TokenCreatedWithOutdatedPolicies`) | The cached Microsoft Graph token is refused, and `az login` alone keeps it. Run `az account clear`, then `az login --tenant <tenant-id>`. Terraform's management calls don't need Graph. |
 | Every plan changes `log_analytics_destination_type` on Foundry's diagnostic setting | Known and harmless ([landing-zone.md](landing-zone.md#known-plan-noise)). |
 
 ## 7. Cost per environment
@@ -187,7 +194,23 @@ App Configuration replicas, or provisioned Cosmos DB throughput (at least 3000 R
 more. Price it with the [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/)
 before choosing those values.
 
-## 8. Last full run
+## 8. Last full runs
+
+### Group by group, with a long prefix (`fullrun`, 2026-10-27)
+
+A new environment, `name_prefix = "swec-s3-ailz-agent-svc"` and `environment = "fullrun"`, with
+its own backend, was deployed one group at a time from a workstation, switching groups 2 and 3
+on with `-var` overrides of its tfvars file:
+
+| Step | Seen |
+|---|---|
+| 2.1 | `scripts/New-StateBackend.ps1 -Environment fullrun`: 5 resources added (resource group `rg-swec-s3-ailz-agent-svc-tfstate-<suffix>`, storage account, `tfstate-fullrun`, role, suffix); `fullrun.backend.hcl` written and used by `terraform init`. |
+| Group 1 | Every name compliant and within its limit (`kv-swec-s3-fullrun-<suffix>`, `stswecs3fullrunagent<suffix>`). The Application Insights connection first failed (`ApplicationInsightsConnectionString is missing`, fixed in #51); the next plan added only it, and the apply succeeded. |
+| Group 2 | Applied: Cosmos DB, AI Search (Norway East), Storage, connections, capability hosts. |
+| Group 3 | First apply hung 45 minutes on the App Configuration settings: the plan was made without `TF_VAR_app_settings_writer_principals` (see Troubleshooting). Planned again with it: the role, the 8 settings and the project group's 2 roles added, nothing destroyed. |
+| Result | 64 resources in the state; all 8 `landingzone:` settings in App Configuration with the `fullrun` label. |
+
+### Full deploy, verify and retire (`rbook`, 2026-10-27)
 
 On 2026-10-27, a fresh environment (`rbook`) was deployed, verified and retired by following
 this runbook only, from a fresh clone of `main`, in the dev subscription:

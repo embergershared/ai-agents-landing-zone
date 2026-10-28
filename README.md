@@ -22,6 +22,55 @@ Foundry AVM pattern module ([why](docs/IMPLEMENTATIONS.md)).
 
 It is infrastructure only; the Agent Application is not deployed by Terraform.
 
+
+## Quick deploy steps
+
+```pwsh
+# Login and set variables
+az login --tenant <tenant-id>
+az account set --subscription <subscription-id>
+$env:ARM_SUBSCRIPTION_ID = az account show --query id -o tsv
+
+# Terraform init + configure backend to an existing Azure Storage Account container
+Set-Location src/landing-zone
+$envName = 'fullrun'
+# Check the values before initializing terraform
+code "environments/$envName.backend.hcl"
+terraform init -reconfigure -backend-config="environments/$envName.backend.hcl"
+
+# Prepare for required permissions for users
+# Gives each listed group or user "Foundry User" on the Foundry account and "Log Analytics Reader" on Application Insights (to read traces)
+# $env:TF_VAR_project_user_principals = '{"users":{"principal_id":"<entra-group-object-id>","principal_type":"Group"}}'
+$GroupDisplayName = "proj-swec-s3-ailz-agent-svc-fullrun-entra-group"
+$env:TF_VAR_project_user_principals = @{ users = @{ principal_id = (az ad group show --group $GroupDisplayName --query id -o tsv); principal_type = 'Group' } } | ConvertTo-Json -Compress
+
+# Gives you "App Configuration Data Owner", so Terraform can write the landingzone: settings into App Configuration with your Entra identity
+# $env:TF_VAR_app_settings_writer_principals = '{"me":{"principal_id":"<your-entra-object-id>","principal_type":"User"}}'
+$env:TF_VAR_app_settings_writer_principals = @{ me = @{ principal_id = (az ad signed-in-user show --query id -o tsv); principal_type = 'User' } } | ConvertTo-Json -Compress
+
+# Check the content of the values terraform will use
+code "environments/$envName.tfvars"
+
+# Deploy Group 1: Foundry resource, project and model
+terraform plan -compact-warnings -var-file="environments/$envName.tfvars" -var="deploy_agent_service_dependencies=false" -var="deploy_workload=false" -out "$envName-g1.tfplan"
+terraform apply "$envName-g1.tfplan"; Remove-Item "$envName-g1.tfplan"
+
+# Deploy Group 2: Foundry Standard (allows persistence of prompts, uploaded files and Foundry IQ)
+terraform plan -compact-warnings -var-file="environments/$envName.tfvars" -var="deploy_workload=false" -out "$envName-g2.tfplan"
+terraform apply "$envName-g2.tfplan"; Remove-Item "$envName-g2.tfplan"
+
+# Deploy Group 3: Application platform based on Container Apps to run coded agents
+terraform plan -compact-warnings -var-file="environments/$envName.tfvars" -out "$envName-g3.tfplan"
+terraform apply "$envName-g3.tfplan"; Remove-Item "$envName-g3.tfplan"
+```
+
+> Note: the sample agent is not deployed with terraform
+
+- To delete all resources:
+```pwsh
+terraform destroy -var-file="environments/$envName.tfvars"
+```
+
 ## Contents
 
 **Background: the upstream Agent Landing Zone**
