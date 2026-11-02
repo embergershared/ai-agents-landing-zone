@@ -78,7 +78,7 @@ locals {
 
 module "foundry" {
   source  = "Azure/avm-ptn-aiml-ai-foundry/azurerm"
-  version = "0.12.0"
+  version = "0.13.0"
 
   base_name                  = local.foundry_base_name
   location                   = azurerm_resource_group.this.location
